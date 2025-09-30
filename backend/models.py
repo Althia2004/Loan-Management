@@ -1,4 +1,4 @@
-from app import db
+from extensions import db   # ✅ instead of "from app import db"
 from datetime import datetime
 from enum import Enum
 import uuid
