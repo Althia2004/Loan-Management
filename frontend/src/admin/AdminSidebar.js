@@ -1,18 +1,18 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { NavLink } from 'react-router-dom';
 import styled from 'styled-components';
 
 const SidebarContainer = styled.div`
   position: fixed;
   left: 0;
-  top: 0;
+  top: 70px; /* Account for header height */
   width: 250px;
-  height: 100vh;
+  height: calc(100vh - 70px);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 20px;
-  z-index: 1000;
+  z-index: 999;
+  overflow-y: auto;
 `;
 
 const Logo = styled.div`
@@ -28,12 +28,12 @@ const LogoIcon = styled.div`
   height: 40px;
   background: white;
   border-radius: 8px;
-  margin-right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
   color: #667eea;
+  font-weight: bold;
+  margin-right: 12px;
 `;
 
 const NavList = styled.ul`
@@ -71,46 +71,21 @@ const NavIcon = styled.span`
   font-size: 20px;
 `;
 
-const LogoutButton = styled.button`
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: none;
-  padding: 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-`;
-
-const Sidebar = () => {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
+const AdminSidebar = () => {
   const navItems = [
-    { path: '/dashboard', icon: '🏠', label: 'My Dashboard' },
-    { path: '/loan-application', icon: '�', label: 'Apply for Loan' },
-    { path: '/loans', icon: '💳', label: 'My Loans' },
-    { path: '/savings', icon: '💰', label: 'My Savings' },
-    { path: '/transactions', icon: '📊', label: 'My Transactions' },
-    { path: '/accounts', icon: '👤', label: 'My Profile' },
+    { path: '/admin/dashboard', icon: '🏠', label: 'Dashboard' },
+    { path: '/admin/loans', icon: '💳', label: 'Loans' },
+    { path: '/admin/users', icon: '👥', label: 'Users' },
+    { path: '/admin/transactions', icon: '📊', label: 'Activity Log' },
+    { path: '/admin/savings', icon: '💰', label: 'Savings' },
+    { path: '/admin/reports', icon: '📈', label: 'Reports' },
+    { path: '/admin/settings', icon: '⚙️', label: 'Settings' },
   ];
 
   return (
     <SidebarContainer>
       <Logo>
-        <LogoIcon>$</LogoIcon>
+        <LogoIcon>💰</LogoIcon>
         Money Glitch
       </Logo>
       
@@ -124,12 +99,8 @@ const Sidebar = () => {
           </NavItem>
         ))}
       </NavList>
-      
-      <LogoutButton onClick={handleLogout}>
-        Logout
-      </LogoutButton>
     </SidebarContainer>
   );
 };
 
-export default Sidebar;
+export default AdminSidebar;

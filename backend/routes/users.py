@@ -40,10 +40,9 @@ def update_user_profile():
         if 'contact_number' in data:
             user.contact_number = data['contact_number']
         if 'capital_share' in data:
-            user.capital_share = data['capital_share']
-            
-        # Update loan eligibility based on capital share
-        user.loan_eligibility = user.capital_share >= 20000
+            user.capital_share = float(data['capital_share'])
+            # Update membership status and loan eligibility
+            user.update_membership_status()
             
         db.session.commit()
         

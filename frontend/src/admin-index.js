@@ -1,16 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
 import AdminApp from './AdminApp';
 import './index.css';
-
-// Check if this is admin mode
-const isAdminMode = window.location.pathname.startsWith('/admin') || 
-                   process.env.REACT_APP_ADMIN === 'true';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    {isAdminMode ? <AdminApp /> : <App />}
+    <AdminApp />
   </React.StrictMode>
 );

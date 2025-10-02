@@ -293,7 +293,7 @@ const Accounts = () => {
           </UserDetails>
         </UserInfo>
         <CapitalInfo>
-          <CapitalAmount>{user?.capital_share?.toLocaleString()} Php</CapitalAmount>
+          <CapitalAmount>₱{user?.capital_share?.toLocaleString('en-PH')}</CapitalAmount>
           <StatusBadge eligible={user?.loan_eligibility}>
             {user?.loan_eligibility ? 'Eligible' : 'Not Eligible'}
           </StatusBadge>

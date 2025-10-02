@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAdminAuth } from '../contexts/AdminAuthContext';
 import styled from 'styled-components';
 
 const LoginContainer = styled.div`
@@ -22,10 +23,34 @@ const LoginCard = styled.div`
 
 const Title = styled.h1`
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   color: #2d3748;
   font-size: 28px;
   font-weight: 600;
+`;
+
+const LoginTypeToggle = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
+const ToggleButton = styled.button`
+  flex: 1;
+  padding: 10px 20px;
+  border: none;
+  background: ${props => props.active ? '#7c5dfa' : '#f7fafc'};
+  color: ${props => props.active ? 'white' : '#4a5568'};
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: ${props => props.active ? '#6d4fd9' : '#edf2f7'};
+  }
 `;
 
 const Form = styled.form`
@@ -105,10 +130,12 @@ const Login = () => {
     email: '',
     password: ''
   });
+  const [loginType, setLoginType] = useState('user'); // 'user' or 'admin'
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login: userLogin } = useAuth();
+  const { login: adminLogin } = useAdminAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -123,11 +150,23 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    const result = await login(formData.email, formData.password);
+    let result;
     
-    if (result.success) {
-      navigate('/dashboard');
+    if (loginType === 'admin') {
+      // Use email for admin login (supports both username and email)
+      result = await adminLogin(formData.email, formData.password);
+      if (result.success) {
+        navigate('/admin/dashboard');
+      }
     } else {
+      // User login
+      result = await userLogin(formData.email, formData.password);
+      if (result.success) {
+        navigate('/dashboard');
+      }
+    }
+    
+    if (!result.success) {
       setError(result.message);
     }
     
@@ -137,16 +176,35 @@ const Login = () => {
   return (
     <LoginContainer>
       <LoginCard>
-        <Title>Login</Title>
+        <Title>🏦 CoCoLoan</Title>
+        
+        <LoginTypeToggle>
+          <ToggleButton 
+            active={loginType === 'user'} 
+            onClick={() => setLoginType('user')}
+            type="button"
+          >
+            User Login
+          </ToggleButton>
+          <ToggleButton 
+            active={loginType === 'admin'} 
+            onClick={() => setLoginType('admin')}
+            type="button"
+          >
+            Admin Login
+          </ToggleButton>
+        </LoginTypeToggle>
+        
         {error && <ErrorMessage>{error}</ErrorMessage>}
         <Form onSubmit={handleSubmit}>
           <FormGroup>
-            <Label>Email</Label>
+            <Label>{loginType === 'admin' ? 'Username or Email' : 'Email'}</Label>
             <Input
-              type="email"
+              type={loginType === 'admin' ? 'text' : 'email'}
               name="email"
               value={formData.email}
               onChange={handleChange}
+              placeholder={loginType === 'admin' ? 'Enter username or email' : 'Enter your email'}
               required
             />
           </FormGroup>
@@ -166,10 +224,6 @@ const Login = () => {
             {loading ? 'Logging in...' : 'Log In'}
           </Button>
         </Form>
-        
-        <LinkText>
-          Don't have an account? <Link to="/register">Register Here</Link>
-        </LinkText>
       </LoginCard>
     </LoginContainer>
   );

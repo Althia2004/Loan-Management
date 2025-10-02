@@ -10,6 +10,15 @@ class LoanStatus(Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
 
+class LoanType(Enum):
+    PERSONAL = "personal"
+    BUSINESS = "business"
+    EMERGENCY = "emergency"
+    EDUCATION = "education"
+    HOME = "home"
+    CAR = "car"
+    MEDICAL = "medical"
+
 class TransactionType(Enum):
     LOAN = "loan"
     SAVINGS = "savings"
@@ -38,6 +47,16 @@ class User(db.Model):
     savings = db.relationship('Saving', backref='user', lazy=True)
     payments = db.relationship('Payment', backref='user', lazy=True)
     
+    def update_membership_status(self):
+        """Update membership status and loan eligibility based on capital share"""
+        if self.capital_share >= 20000:
+            self.member_status = 'REGULAR MEMBER'
+            self.loan_eligibility = True
+        else:
+            self.member_status = 'MEMBER'
+            self.loan_eligibility = False
+        self.updated_at = datetime.utcnow()
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -65,9 +84,11 @@ class Loan(db.Model):
     monthly_payment = db.Column(db.Float, nullable=False)
     remaining_balance = db.Column(db.Float, nullable=False)
     status = db.Column(db.Enum(LoanStatus), default=LoanStatus.PENDING)
+    loan_type = db.Column(db.Enum(LoanType), default=LoanType.PERSONAL)
     purpose = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     approved_at = db.Column(db.DateTime)
+    due_date = db.Column(db.DateTime)
     
     def to_dict(self):
         return {
@@ -80,9 +101,11 @@ class Loan(db.Model):
             'monthly_payment': self.monthly_payment,
             'remaining_balance': self.remaining_balance,
             'status': self.status.value,
+            'loan_type': self.loan_type.value,
             'purpose': self.purpose,
             'created_at': self.created_at.isoformat(),
-            'approved_at': self.approved_at.isoformat() if self.approved_at else None
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None
         }
 
 class Transaction(db.Model):

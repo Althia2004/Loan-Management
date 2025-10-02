@@ -11,7 +11,7 @@ from extensions import db, migrate, jwt, bcrypt
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='static', static_url_path='/static')
     load_dotenv()
 
     # Config
@@ -20,6 +20,10 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'jwt-secret-string')
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+    
+    # File upload config
+    app.config['UPLOAD_FOLDER'] = 'static'
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
     # Init extensions
     db.init_app(app)
@@ -30,9 +34,11 @@ def create_app():
 
     # Import models AFTER db is initialized
     from models import User, Loan, Transaction, Saving, Payment
+    from admin_models import Admin, AdminActivity
 
     # Register blueprints
     from routes.auth import auth_bp
+    from routes.admin import admin_bp
     from routes.users import users_bp
     from routes.loans import loans_bp
     from routes.transactions import transactions_bp
@@ -40,6 +46,7 @@ def create_app():
     from routes.savings import savings_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(loans_bp, url_prefix='/api/loans')
     app.register_blueprint(transactions_bp, url_prefix='/api/transactions')

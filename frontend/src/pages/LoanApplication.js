@@ -220,6 +220,7 @@ const LoanApplication = () => {
   const [formData, setFormData] = useState({
     principal_amount: '',
     duration_months: '',
+    loan_type: 'personal',
     purpose: ''
   });
   const [loading, setLoading] = useState(false);
@@ -274,7 +275,7 @@ const LoanApplication = () => {
           </UserDetails>
         </UserInfo>
         <CapitalInfo>
-          <CapitalAmount>{user?.capital_share?.toLocaleString()} Php</CapitalAmount>
+          <CapitalAmount>₱{user?.capital_share?.toLocaleString('en-PH')}</CapitalAmount>
           <StatusBadge eligible={user?.loan_eligibility}>
             {user?.loan_eligibility ? 'Eligible' : 'Not Eligible'}
           </StatusBadge>
@@ -333,6 +334,25 @@ const LoanApplication = () => {
               <option value="18">18 Months</option>
               <option value="24">24 Months</option>
               <option value="36">36 Months</option>
+            </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Loan Type</Label>
+            <Select
+              name="loan_type"
+              value={formData.loan_type}
+              onChange={handleChange}
+              required
+              disabled={!user?.loan_eligibility}
+            >
+              <option value="personal">Personal Loan</option>
+              <option value="business">Business Loan</option>
+              <option value="emergency">Emergency Loan</option>
+              <option value="education">Education Loan</option>
+              <option value="home">Home Loan</option>
+              <option value="car">Car Loan</option>
+              <option value="medical">Medical Loan</option>
             </Select>
           </FormGroup>
 

@@ -19,6 +19,12 @@ const PageTitle = styled.h1`
   margin-bottom: 30px;
 `;
 
+const WelcomeText = styled.p`
+  font-size: 16px;
+  color: #4a5568;
+  margin-bottom: 30px;
+`;
+
 const CardGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -191,7 +197,7 @@ const Dashboard = () => {
           </UserAvatar>
           <UserName>{user?.first_name} {user?.last_name}</UserName>
           <UserRole>{user?.member_status}</UserRole>
-          <CapitalShare>{user?.capital_share?.toLocaleString()} Php</CapitalShare>
+          <CapitalShare>₱{user?.capital_share?.toLocaleString('en-PH')}</CapitalShare>
           <StatusBadge eligible={user?.loan_eligibility}>
             {user?.loan_eligibility ? 'Eligible for loan' : 'Not Eligible'}
           </StatusBadge>

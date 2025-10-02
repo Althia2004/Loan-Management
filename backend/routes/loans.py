@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import Loan, LoanStatus
-from app import db
+from models import Loan, LoanStatus, LoanType
+from extensions import db
 import uuid
 
 loans_bp = Blueprint('loans', __name__)
@@ -49,6 +49,13 @@ def apply_for_loan():
         monthly_payment = (principal * monthly_interest_rate * (1 + monthly_interest_rate)**duration) / ((1 + monthly_interest_rate)**duration - 1)
         
         # Create loan application
+        loan_type = LoanType.PERSONAL  # default
+        if data.get('loan_type'):
+            try:
+                loan_type = LoanType(data['loan_type'])
+            except ValueError:
+                loan_type = LoanType.PERSONAL
+        
         loan = Loan(
             user_id=user_id,
             principal_amount=principal,
@@ -56,6 +63,7 @@ def apply_for_loan():
             duration_months=duration,
             monthly_payment=monthly_payment,
             remaining_balance=principal,
+            loan_type=loan_type,
             purpose=data['purpose'],
             status=LoanStatus.PENDING
         )

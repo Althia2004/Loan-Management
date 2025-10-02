@@ -1,6 +1,6 @@
-# Loan Management System
+# Money Glitch
 
-A comprehensive loan management application built with Python Flask backend and React frontend, designed to handle member loans, savings, transactions, and account management.
+A comprehensive financial management platform built with Python Flask backend and React frontend, designed to handle member loans, savings, transactions, and account management.
 
 ## Features
 
