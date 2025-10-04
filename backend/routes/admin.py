@@ -24,7 +24,7 @@ def admin_login():
             (Admin.email == username_or_email)
         ).first()
         
-        if admin and check_password_hash(admin.password_hash, data['password']) and admin.is_active:
+        if admin and admin.check_password(data['password']) and admin.is_active:
             # Update last login
             admin.last_login = datetime.utcnow()
             
@@ -1069,7 +1069,16 @@ def create_admin():
         required_fields = ['name', 'username', 'email', 'password']
         for field in required_fields:
             if not data.get(field):
-                return jsonify({'message': f'{field} is required'}), 400
+                return jsonify({'message': f'{field.replace("_", " ").title()} is required'}), 400
+        
+        # Parse full name into first and last name
+        full_name_parts = data['name'].strip().split()
+        if len(full_name_parts) < 2:
+            first_name = full_name_parts[0] if full_name_parts else ''
+            last_name = 'Admin'  # Default last name
+        else:
+            first_name = full_name_parts[0]
+            last_name = ' '.join(full_name_parts[1:])
         
         # Check if username already exists
         if Admin.query.filter_by(username=data['username']).first():
@@ -1080,11 +1089,14 @@ def create_admin():
             return jsonify({'message': 'Email already exists'}), 400
         
         # Create new admin
+        from extensions import bcrypt
         new_admin = Admin(
+            first_name=first_name,
+            last_name=last_name,
             name=data['name'],
             username=data['username'],
             email=data['email'],
-            password_hash=generate_password_hash(data['password']),
+            password_hash=bcrypt.generate_password_hash(data['password']).decode('utf-8'),
             is_active=True,
             created_by=current_admin.id
         )

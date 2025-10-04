@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../contexts/AdminAuthContext';
 
 const HeaderContainer = styled.header`
@@ -78,6 +79,12 @@ const LogoutButton = styled.button`
 
 const AdminHeader = () => {
   const { admin, logout } = useAdminAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login'); // Redirect to main login page
+  };
 
   return (
     <HeaderContainer>
@@ -94,7 +101,7 @@ const AdminHeader = () => {
         <UserAvatar>
           {admin?.first_name?.charAt(0)}{admin?.last_name?.charAt(0)}
         </UserAvatar>
-        <LogoutButton onClick={logout}>
+        <LogoutButton onClick={handleLogout}>
           Logout
         </LogoutButton>
       </UserSection>

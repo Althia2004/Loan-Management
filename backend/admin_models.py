@@ -25,6 +25,12 @@ class Admin(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    def check_password(self, password):
+        """Check if provided password matches the hashed password"""
+        from flask_bcrypt import Bcrypt
+        bcrypt = Bcrypt()
+        return bcrypt.check_password_hash(self.password_hash, password)
+        
     def to_dict(self):
         return {
             'id': self.id,
