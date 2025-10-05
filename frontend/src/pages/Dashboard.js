@@ -156,27 +156,56 @@ const Dashboard = () => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
 
-  // Sample data for charts
-  const moneyFlowData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
-    datasets: [
-      {
-        label: 'Money Flow',
-        data: [10000, 15000, 12000, 18000, 22000, 25000, 20000, 15000, 8000],
-        borderColor: '#667eea',
-        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-        tension: 0.4,
-        fill: true,
-      },
-    ],
+  // Generate money flow data from payment history
+  const generateMoneyFlowData = () => {
+    if (!dashboardData?.payment_history || dashboardData.payment_history.length === 0) {
+      // Return empty data if no payments
+      return {
+        labels: ['No payments yet'],
+        datasets: [
+          {
+            label: 'Payments',
+            data: [0],
+            borderColor: '#e2e8f0',
+            backgroundColor: 'rgba(226, 232, 240, 0.1)',
+            tension: 0.4,
+            fill: true,
+          },
+        ],
+      };
+    }
+
+    const labels = dashboardData.payment_history.map(item => item.month);
+    const data = dashboardData.payment_history.map(item => item.amount);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Payment Amount (₱)',
+          data,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          tension: 0.4,
+          fill: true,
+        },
+      ],
+    };
   };
 
+  const moneyFlowData = generateMoneyFlowData();
+
+  // Calculate loan balance data from backend response
+  const totalLoanAmount = dashboardData?.total_principal_amount || 0;
+  const totalRemainingBalance = dashboardData?.total_remaining_balance || 0;
+  const paidAmount = totalLoanAmount - totalRemainingBalance;
+
   const loanStatusData = {
-    labels: ['Current Loan', 'Remaining Balance'],
+    labels: totalLoanAmount > 0 ? ['Paid Amount', 'Remaining Balance'] : ['No Active Loans'],
     datasets: [
       {
-        data: [dashboardData?.total_loan_amount || 100000, 10000],
-        backgroundColor: ['#48bb78', '#e2e8f0'],
+        data: totalLoanAmount > 0 ? [paidAmount, totalRemainingBalance] : [1],
+        backgroundColor: totalLoanAmount > 0 ? ['#48bb78', '#f56565'] : ['#e2e8f0'],
         borderWidth: 0,
       },
     ],
@@ -204,22 +233,50 @@ const Dashboard = () => {
         </UserCard>
 
         <Card>
-          <h3>Money Flow</h3>
-          <p style={{ color: '#718096', fontSize: '14px', marginBottom: '16px' }}>This Month</p>
+          <h3>Payment History</h3>
+          <p style={{ color: '#718096', fontSize: '14px', marginBottom: '16px' }}>
+            {dashboardData?.payment_history?.length > 0 ? 'Last 12 Months' : 'No payment history yet'}
+          </p>
           <ChartContainer>
             <Line 
               data={moneyFlowData} 
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: { 
+                  legend: { 
+                    display: dashboardData?.payment_history?.length > 0,
+                    position: 'top'
+                  },
+                  tooltip: {
+                    enabled: dashboardData?.payment_history?.length > 0,
+                    callbacks: {
+                      label: function(context) {
+                        return `Payment: ₱${context.parsed.y.toLocaleString()}`;
+                      }
+                    }
+                  }
+                },
                 scales: {
-                  y: { beginAtZero: true, grid: { display: false } },
+                  y: { 
+                    beginAtZero: true, 
+                    grid: { display: false },
+                    ticks: {
+                      callback: function(value) {
+                        return '₱' + value.toLocaleString();
+                      }
+                    }
+                  },
                   x: { grid: { display: false } }
                 }
               }}
             />
           </ChartContainer>
+          {dashboardData?.payment_history?.length > 0 && (
+            <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '14px', color: '#718096' }}>
+              Total Payments: ₱{dashboardData.payment_history.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
+            </div>
+          )}
         </Card>
 
         <Card>
@@ -230,18 +287,45 @@ const Dashboard = () => {
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' } },
+                plugins: { 
+                  legend: { 
+                    position: 'bottom',
+                    display: totalLoanAmount > 0
+                  },
+                  tooltip: {
+                    enabled: totalLoanAmount > 0,
+                    callbacks: {
+                      label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        const percentage = ((value / totalLoanAmount) * 100).toFixed(1);
+                        return `${label}: ₱${value.toLocaleString()} (${percentage}%)`;
+                      }
+                    }
+                  }
+                },
                 cutout: '70%'
               }}
             />
           </ChartContainer>
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
-            <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-              Remaining Balance: {(10000).toLocaleString()} PHP
-            </div>
-            <div style={{ fontSize: '14px', color: '#718096' }}>
-              Current Loan: {(dashboardData?.total_loan_amount || 100000).toLocaleString()} PHP
-            </div>
+            {totalLoanAmount > 0 ? (
+              <>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f56565' }}>
+                  Remaining Balance: ₱{totalRemainingBalance.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '14px', color: '#48bb78', marginTop: '4px' }}>
+                  Paid Amount: ₱{paidAmount.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '14px', color: '#718096', marginTop: '4px' }}>
+                  Total Loan: ₱{totalLoanAmount.toLocaleString()}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: '16px', color: '#718096' }}>
+                No active loans
+              </div>
+            )}
           </div>
         </Card>
       </CardGrid>
@@ -252,18 +336,96 @@ const Dashboard = () => {
           <StatLabel>Active Loans</StatLabel>
         </StatCard>
         <StatCard>
+          <StatValue>₱{totalRemainingBalance.toLocaleString()}</StatValue>
+          <StatLabel>Total Outstanding</StatLabel>
+        </StatCard>
+        <StatCard>
           <StatValue>₱{(dashboardData?.total_monthly_payment || 0).toLocaleString()}</StatValue>
           <StatLabel>Monthly Payment</StatLabel>
         </StatCard>
-        <StatCard>
-          <StatValue>5,000</StatValue>
-          <StatLabel>Penalties</StatLabel>
-        </StatCard>
-        <StatCard>
-          <StatValue>₱{user?.capital_share?.toLocaleString() || '0'}</StatValue>
-          <StatLabel>Capital Share</StatLabel>
+        <StatCard style={{ 
+          borderLeft: dashboardData?.total_penalties > 0 ? '4px solid #f56565' : '4px solid #e2e8f0',
+          backgroundColor: dashboardData?.total_penalties > 0 ? '#fef5f5' : 'white'
+        }}>
+          <StatValue style={{ 
+            color: dashboardData?.total_penalties > 0 ? '#f56565' : '#667eea'
+          }}>
+            {dashboardData?.total_penalties > 0 && '⚠️ '}₱{(dashboardData?.total_penalties || 0).toLocaleString()}
+          </StatValue>
+          <StatLabel style={{ 
+            color: dashboardData?.total_penalties > 0 ? '#f56565' : '#718096'
+          }}>
+            Penalties {dashboardData?.total_penalties > 0 ? '(Overdue)' : ''}
+          </StatLabel>
+          {dashboardData?.overdue_loans?.length > 0 && (
+            <div style={{ fontSize: '12px', color: '#f56565', marginTop: '4px' }}>
+              {dashboardData.overdue_loans.length} overdue loan{dashboardData.overdue_loans.length > 1 ? 's' : ''}
+            </div>
+          )}
         </StatCard>
       </StatsGrid>
+
+      {dashboardData?.overdue_loans?.length > 0 && (
+        <Card style={{ borderLeft: '4px solid #f56565' }}>
+          <h3 style={{ color: '#f56565' }}>⚠️ Overdue Loan Penalties</h3>
+          <p style={{ color: '#718096', fontSize: '14px', marginBottom: '16px' }}>
+            You have {dashboardData.overdue_loans.length} overdue loan{dashboardData.overdue_loans.length > 1 ? 's' : ''} with penalties
+          </p>
+          <TransactionTable>
+            <thead>
+              <tr>
+                <TableHeader>Loan ID</TableHeader>
+                <TableHeader>Days Overdue</TableHeader>
+                <TableHeader>Monthly Payment</TableHeader>
+                <TableHeader>Penalty Amount</TableHeader>
+                <TableHeader>Due Date</TableHeader>
+              </tr>
+            </thead>
+            <tbody>
+              {dashboardData.overdue_loans.map((overdueData, index) => (
+                <tr key={index}>
+                  <TableCell>#{overdueData.loan_id}</TableCell>
+                  <TableCell>
+                    <span style={{ color: '#f56565', fontWeight: 'bold' }}>
+                      {overdueData.days_overdue} days
+                    </span>
+                  </TableCell>
+                  <TableCell>₱{overdueData.monthly_payment.toLocaleString()}</TableCell>
+                  <TableCell style={{ color: '#f56565', fontWeight: 'bold' }}>
+                    ₱{overdueData.penalty_amount.toLocaleString()}
+                  </TableCell>
+                  <TableCell>{new Date(overdueData.due_date).toLocaleDateString()}</TableCell>
+                </tr>
+              ))}
+            </tbody>
+          </TransactionTable>
+          <div style={{ 
+            background: '#fed7d7', 
+            padding: '12px', 
+            borderRadius: '8px', 
+            marginTop: '16px',
+            fontSize: '14px'
+          }}>
+            <strong>Penalty Calculation:</strong> 5% of monthly payment for every 30-day period overdue.
+            Pay your loans on time to avoid additional penalties.
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <Link 
+              to="/accounts" 
+              style={{ 
+                background: '#48bb78', 
+                color: 'white', 
+                padding: '8px 16px', 
+                borderRadius: '4px', 
+                textDecoration: 'none',
+                fontSize: '14px'
+              }}
+            >
+              Make Payment Now
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <h3>Recent Transactions</h3>

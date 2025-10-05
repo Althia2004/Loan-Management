@@ -66,22 +66,89 @@ def get_dashboard_data():
             return jsonify({'message': 'User not found'}), 404
         
         # Get user's active loans
-        from models import Loan, Transaction, LoanStatus
+        from models import Loan, Transaction, LoanStatus, Payment, Penalty
+        from sqlalchemy import func, extract
+        from datetime import datetime, timedelta
+        
         active_loans = Loan.query.filter_by(user_id=user.id, status=LoanStatus.ACTIVE).all()
         recent_transactions = Transaction.query.filter_by(user_id=user.id).order_by(Transaction.created_at.desc()).limit(5).all()
         
+        # Get payment history for the last 12 months
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=365)
+        
+        # Get monthly payment totals
+        monthly_payments = db.session.query(
+            extract('year', Payment.payment_date).label('year'),
+            extract('month', Payment.payment_date).label('month'),
+            func.sum(Payment.amount).label('total_amount')
+        ).filter(
+            Payment.user_id == user.id,
+            Payment.payment_date >= start_date,
+            Payment.status == 'completed'
+        ).group_by(
+            extract('year', Payment.payment_date),
+            extract('month', Payment.payment_date)
+        ).order_by(
+            'year', 'month'
+        ).all()
+        
         # Calculate totals
-        total_loan_amount = sum(loan.remaining_balance for loan in active_loans)
+        total_principal_amount = sum(loan.principal_amount for loan in active_loans)
+        total_remaining_balance = sum(loan.remaining_balance for loan in active_loans)
         total_monthly_payment = sum(loan.monthly_payment for loan in active_loans)
+        
+        # Calculate penalties for overdue loans
+        current_date = datetime.utcnow()
+        total_penalties = 0
+        overdue_loans = []
+        
+        for loan in active_loans:
+            if loan.is_overdue(current_date):
+                penalty_amount = loan.calculate_penalty(current_date)
+                total_penalties += penalty_amount
+                overdue_loans.append({
+                    'loan_id': loan.id,
+                    'days_overdue': loan.get_days_overdue(current_date),
+                    'penalty_amount': penalty_amount,
+                    'due_date': loan.due_date.isoformat() if loan.due_date else None,
+                    'monthly_payment': loan.monthly_payment
+                })
+        
+        # Format monthly payment data for chart
+        payment_chart_data = []
+        current_date = datetime.utcnow()
+        
+        for i in range(11, -1, -1):  # Last 12 months
+            target_date = current_date - timedelta(days=i*30)
+            month_name = target_date.strftime('%b')
+            year = target_date.year
+            month = target_date.month
+            
+            # Find payment for this month
+            month_total = 0
+            for payment in monthly_payments:
+                if payment.year == year and payment.month == month:
+                    month_total = float(payment.total_amount)
+                    break
+            
+            payment_chart_data.append({
+                'month': month_name,
+                'amount': month_total
+            })
         
         dashboard_data = {
             'user': user.to_dict(),
             'capital_share': user.capital_share,
             'loan_eligibility': user.loan_eligibility,
             'active_loans': [loan.to_dict() for loan in active_loans],
-            'total_loan_amount': total_loan_amount,
+            'total_principal_amount': total_principal_amount,
+            'total_remaining_balance': total_remaining_balance,
             'total_monthly_payment': total_monthly_payment,
-            'recent_transactions': [transaction.to_dict() for transaction in recent_transactions]
+            'total_penalties': total_penalties,
+            'overdue_loans': overdue_loans,
+            'recent_transactions': [transaction.to_dict() for transaction in recent_transactions],
+            'payment_history': payment_chart_data
         }
         
         return jsonify(dashboard_data), 200

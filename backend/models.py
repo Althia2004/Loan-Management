@@ -107,6 +107,56 @@ class Loan(db.Model):
             'approved_at': self.approved_at.isoformat() if self.approved_at else None,
             'due_date': self.due_date.isoformat() if self.due_date else None
         }
+    
+    def calculate_penalty(self, current_date=None):
+        """Calculate penalty for overdue payment"""
+        if current_date is None:
+            current_date = datetime.utcnow()
+        
+        if not self.due_date or current_date <= self.due_date:
+            return 0  # No penalty if not overdue
+        
+        days_overdue = (current_date - self.due_date).days
+        if days_overdue <= 0:
+            return 0
+        
+        # Calculate penalty: 5% of monthly payment for every 30 days overdue
+        penalty_rate = 0.05  # 5%
+        penalty_periods = (days_overdue // 30) + 1  # At least 1 period if overdue
+        penalty_amount = self.monthly_payment * penalty_rate * penalty_periods
+        
+        return penalty_amount
+    
+    def is_overdue(self, current_date=None):
+        """Check if loan payment is overdue"""
+        if current_date is None:
+            current_date = datetime.utcnow()
+        
+        return self.due_date and current_date > self.due_date
+    
+    def get_days_overdue(self, current_date=None):
+        """Get number of days overdue"""
+        if current_date is None:
+            current_date = datetime.utcnow()
+        
+        if not self.due_date or current_date <= self.due_date:
+            return 0
+        
+        return (current_date - self.due_date).days
+    
+    def get_next_due_date(self):
+        """Calculate next payment due date (30 days from last due date)"""
+        if not self.due_date:
+            return None
+        
+        from datetime import timedelta
+        return self.due_date + timedelta(days=30)
+    
+    def update_due_date_after_payment(self):
+        """Update due date after payment is made"""
+        if self.due_date:
+            from datetime import timedelta
+            self.due_date = self.due_date + timedelta(days=30)
 
 class Transaction(db.Model):
     __tablename__ = 'transactions'
@@ -170,4 +220,40 @@ class Payment(db.Model):
             'amount': self.amount,
             'payment_date': self.payment_date.isoformat(),
             'status': self.status
+        }
+
+class Penalty(db.Model):
+    __tablename__ = 'penalties'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    penalty_id = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    loan_id = db.Column(db.Integer, db.ForeignKey('loans.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    penalty_date = db.Column(db.DateTime, nullable=False)
+    due_date = db.Column(db.DateTime, nullable=False)  # The original due date that was missed
+    days_overdue = db.Column(db.Integer, nullable=False)
+    penalty_rate = db.Column(db.Float, default=0.05)  # 5% default penalty rate
+    status = db.Column(db.String(20), default='unpaid')  # unpaid, paid
+    description = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='penalties')
+    loan = db.relationship('Loan', backref='penalties')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'penalty_id': self.penalty_id,
+            'user_id': self.user_id,
+            'loan_id': self.loan_id,
+            'amount': self.amount,
+            'penalty_date': self.penalty_date.isoformat(),
+            'due_date': self.due_date.isoformat(),
+            'days_overdue': self.days_overdue,
+            'penalty_rate': self.penalty_rate,
+            'status': self.status,
+            'description': self.description,
+            'created_at': self.created_at.isoformat()
         }

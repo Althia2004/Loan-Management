@@ -54,6 +54,9 @@ def make_payment():
         if loan.remaining_balance == 0:
             from models import LoanStatus
             loan.status = LoanStatus.COMPLETED
+        else:
+            # Update due date for next payment (advance by 30 days)
+            loan.update_due_date_after_payment()
         
         db.session.add(payment)
         db.session.commit()
