@@ -80,6 +80,10 @@ def create_app():
     def health_check():
         return jsonify({'status': 'healthy', 'message': 'Loan Management API is running'})
 
+    # Initialize database on first startup
+    from init_db import init_database
+    init_database(app)
+
     return app
 
 if __name__ == '__main__':
@@ -87,6 +91,3 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV') != 'production'
     app.run(debug=debug, host='0.0.0.0', port=port)
-
-# For Gunicorn
-app = create_app()

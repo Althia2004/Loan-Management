@@ -24,39 +24,51 @@
 Name: moneyglitch-backend
 Region: Oregon (US West)
 Branch: main
-Root Directory: backend
+Root Directory: (leave empty)
 Runtime: Python 3
-Build Command: pip install -r requirements.txt
-Start Command: gunicorn app:app
+Build Command: pip install -r backend/requirements.txt
+Start Command: cd backend && gunicorn --bind 0.0.0.0:$PORT wsgi:app
 Instance Type: Free
 ```
 
 ### 3. Environment Variables
+Add these in Render dashboard (click "Generate" for secret keys):
 ```env
 FLASK_ENV=production
-JWT_SECRET_KEY=[Generate Random]
-SECRET_KEY=[Generate Random]
+JWT_SECRET_KEY=[Click Generate]
+SECRET_KEY=[Click Generate]
 FRONTEND_URL=https://moneyglitch.vercel.app
 ```
 
 ### 4. Add Database (Recommended)
 - [ ] New + → PostgreSQL
 - [ ] Name: `moneyglitch-db`
-- [ ] Plan: Free
-- [ ] Link to web service
+- [ ] Plan: Free (0.1 GB)
+- [ ] After creation, link to your web service
+- [ ] Add `DATABASE_URL` environment variable → Select "Connect to moneyglitch-db"
 
 ### 5. Deploy
 - [ ] Click "Create Web Service"
-- [ ] Wait for build to complete
+- [ ] Wait for build to complete (2-5 minutes)
+- [ ] **Database auto-initializes on first startup!** ✨
 - [ ] Copy backend URL: `https://moneyglitch-backend.onrender.com`
 
-### 6. Initialize Database
-In Render Shell:
-```bash
-cd backend
-flask db upgrade
-python create_admin.py
+### 6. Verify Database Initialization
+Check the deployment logs. You should see:
 ```
+🔧 Initializing database...
+✅ Database tables created successfully
+✅ Default admin created successfully!
+   Username: admin
+   Password: admin123
+   ⚠️  IMPORTANT: Change this password after first login!
+🎉 Database initialization complete!
+```
+
+**Default Admin Credentials:**
+- Username: `admin`
+- Password: `admin123`
+- **⚠️ Change immediately after first login in Settings!**
 
 ### 7. Test Backend
 - [ ] Visit: `https://your-backend.onrender.com/api/health`

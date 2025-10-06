@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User, Loan, Payment, Saving, Transaction, LoanStatus
 from admin_models import Admin, AdminActivity
-from app import db
+from extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import func, extract
 

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import Payment, Loan
-from app import db
+from extensions import db
 from datetime import datetime
 import uuid
 
