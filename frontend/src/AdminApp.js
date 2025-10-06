@@ -15,8 +15,22 @@ import AdminHeader from './admin/AdminHeader';
 import styled from 'styled-components';
 
 const AdminLayout = styled.div`
+  display: flex;
   min-height: 100vh;
   background: #f8f9fa;
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+`;
+
+const ContentArea = styled.div`
+  flex: 1;
+  padding: 20px;
+  margin-top: 70px;
 `;
 
 const AdminApp = () => {
@@ -30,18 +44,22 @@ const AdminApp = () => {
             element={
               <AdminRoute>
                 <AdminLayout>
-                  <AdminHeader />
                   <AdminSidebar />
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/admin/dashboard" />} />
-                    <Route path="/dashboard" element={<AdminDashboard />} />
-                    <Route path="/loans" element={<AdminLoans />} />
-                    <Route path="/users" element={<AdminUsers />} />
-                    <Route path="/transactions" element={<AdminTransactions />} />
-                    <Route path="/savings" element={<AdminSavings />} />
-                    <Route path="/reports" element={<AdminReports />} />
-                    <Route path="/settings" element={<AdminSettings />} />
-                  </Routes>
+                  <MainContent>
+                    <AdminHeader />
+                    <ContentArea>
+                      <Routes>
+                        <Route path="/" element={<Navigate to="/admin/dashboard" />} />
+                        <Route path="/dashboard" element={<AdminDashboard />} />
+                        <Route path="/loans" element={<AdminLoans />} />
+                        <Route path="/users" element={<AdminUsers />} />
+                        <Route path="/transactions" element={<AdminTransactions />} />
+                        <Route path="/savings" element={<AdminSavings />} />
+                        <Route path="/reports" element={<AdminReports />} />
+                        <Route path="/settings" element={<AdminSettings />} />
+                      </Routes>
+                    </ContentArea>
+                  </MainContent>
                 </AdminLayout>
               </AdminRoute>
             }

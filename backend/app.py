@@ -50,6 +50,7 @@ def create_app():
     from routes.transactions import transactions_bp
     from routes.payments import payments_bp
     from routes.savings import savings_bp
+    from routes.reports import reports_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
@@ -58,6 +59,7 @@ def create_app():
     app.register_blueprint(transactions_bp, url_prefix='/api/transactions')
     app.register_blueprint(payments_bp, url_prefix='/api/payments')
     app.register_blueprint(savings_bp, url_prefix='/api/savings')
+    app.register_blueprint(reports_bp, url_prefix='/api/admin/reports')
 
     # Health check
     @app.route('/api/health')

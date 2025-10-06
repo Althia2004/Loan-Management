@@ -176,7 +176,7 @@ const Login = () => {
   return (
     <LoginContainer>
       <LoginCard>
-        <Title>🏦 CoCoLoan</Title>
+        <Title>💰 Money Glitch</Title>
         
         <LoginTypeToggle>
           <ToggleButton 

@@ -313,55 +313,70 @@ const AdminReports = () => {
     return activity.type === activityFilter;
   });
 
-  const activityChartData = {
-    labels: chartData.daily_activities?.labels || [],
+  // Loan Status Distribution (Doughnut Chart)
+  const loanStatusChartData = {
+    labels: chartData.loan_status?.labels || ['Pending', 'Active', 'Completed', 'Rejected'],
     datasets: [{
-      label: 'User Activities',
-      data: chartData.daily_activities?.data || [],
-      borderColor: 'rgb(75, 192, 192)',
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      tension: 0.4,
-      fill: true
-    }]
-  };
-
-  const incomeChartData = {
-    labels: chartData.income_sources?.labels || [],
-    datasets: [{
-      data: chartData.income_sources?.data || [],
+      data: chartData.loan_status?.data || [0, 0, 0, 0],
       backgroundColor: [
-        '#FF6384',
-        '#36A2EB',
-        '#FFCE56',
-        '#4BC0C0'
+        '#FFA726', // Orange for Pending
+        '#66BB6A', // Green for Active
+        '#42A5F5', // Blue for Completed
+        '#EF5350'  // Red for Rejected
       ],
       hoverBackgroundColor: [
-        '#FF6384',
-        '#36A2EB',
-        '#FFCE56',
-        '#4BC0C0'
-      ]
+        '#FF9800',
+        '#4CAF50',
+        '#2196F3',
+        '#F44336'
+      ],
+      borderWidth: 2,
+      borderColor: '#fff'
     }]
   };
 
-  const monthlyTrendsData = {
-    labels: chartData.monthly_trends?.labels || [],
-    datasets: [
-      {
-        label: 'Savings',
-        data: chartData.monthly_trends?.savings || [],
-        backgroundColor: 'rgba(39, 174, 96, 0.8)',
-        borderColor: 'rgba(39, 174, 96, 1)',
-        borderWidth: 2
-      },
-      {
-        label: 'Loans',
-        data: chartData.monthly_trends?.loans || [],
-        backgroundColor: 'rgba(231, 76, 60, 0.8)',
-        borderColor: 'rgba(231, 76, 60, 1)',
-        borderWidth: 2
-      }
-    ]
+  // Financial Overview (Bar Chart)
+  const financialOverviewData = {
+    labels: chartData.financial_overview?.labels || ['Total Savings', 'Loans Disbursed', 'Payments Received', 'Outstanding'],
+    datasets: [{
+      label: 'Amount (₱)',
+      data: chartData.financial_overview?.data || [0, 0, 0, 0],
+      backgroundColor: [
+        'rgba(102, 187, 106, 0.8)', // Green for Savings
+        'rgba(239, 83, 80, 0.8)',   // Red for Loans
+        'rgba(66, 165, 245, 0.8)',  // Blue for Payments
+        'rgba(255, 167, 38, 0.8)'   // Orange for Outstanding
+      ],
+      borderColor: [
+        'rgba(102, 187, 106, 1)',
+        'rgba(239, 83, 80, 1)',
+        'rgba(66, 165, 245, 1)',
+        'rgba(255, 167, 38, 1)'
+      ],
+      borderWidth: 2
+    }]
+  };
+
+  // User Engagement (Doughnut Chart)
+  const userEngagementData = {
+    labels: chartData.user_engagement?.labels || ['Total Users', 'Users with Loans', 'Users with Savings', 'Active Payers'],
+    datasets: [{
+      data: chartData.user_engagement?.data || [0, 0, 0, 0],
+      backgroundColor: [
+        '#9575CD', // Purple
+        '#4CAF50', // Green
+        '#FFB74D', // Amber
+        '#64B5F6'  // Light Blue
+      ],
+      hoverBackgroundColor: [
+        '#7E57C2',
+        '#43A047',
+        '#FFA726',
+        '#42A5F5'
+      ],
+      borderWidth: 2,
+      borderColor: '#fff'
+    }]
   };
 
   const chartOptions = {
@@ -468,19 +483,19 @@ const AdminReports = () => {
       {/* Charts Grid */}
       <ChartsGrid>
         <ChartContainer>
-          <ChartTitle>Daily Activity Trends</ChartTitle>
-          <Line data={activityChartData} options={chartOptions} />
+          <ChartTitle>📊 Loan Status Distribution</ChartTitle>
+          <Doughnut data={loanStatusChartData} options={doughnutOptions} />
         </ChartContainer>
         <ChartContainer>
-          <ChartTitle>Income Distribution</ChartTitle>
-          <Doughnut data={incomeChartData} options={doughnutOptions} />
+          <ChartTitle>👥 User Engagement</ChartTitle>
+          <Doughnut data={userEngagementData} options={doughnutOptions} />
         </ChartContainer>
       </ChartsGrid>
 
-      {/* Monthly Trends Chart */}
+      {/* Financial Overview Chart */}
       <ChartContainer style={{ marginBottom: '20px' }}>
-        <ChartTitle>Monthly Financial Trends</ChartTitle>
-        <Bar data={monthlyTrendsData} options={chartOptions} />
+        <ChartTitle>💰 Financial Overview</ChartTitle>
+        <Bar data={financialOverviewData} options={chartOptions} />
       </ChartContainer>
 
       {/* Recent Activities */}

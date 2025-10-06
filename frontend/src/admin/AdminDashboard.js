@@ -26,15 +26,14 @@ ChartJS.register(
 );
 
 const DashboardContainer = styled.div`
-  margin-left: 250px; /* Account for sidebar */
-  padding: 20px;
-  background: #f8f9fa;
-  min-height: 100vh;
+  padding: 0;
+  background: transparent;
+  min-height: auto;
 `;
 
 const Header = styled.div`
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
 `;
@@ -405,7 +404,7 @@ const AdminDashboard = () => {
               </UserAvatar>
               <LoanInfo>
                 <h4>{loan.status || 'Reviewing Status'}</h4>
-                <p>{loan.user_name} - ${loan.principal_amount?.toLocaleString()}</p>
+                <p>{loan.user_name} - ₱{loan.principal_amount?.toLocaleString()}</p>
               </LoanInfo>
               <StatusBadge status={loan.status}>
                 {loan.status || 'PENDING'}

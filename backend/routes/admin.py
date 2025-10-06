@@ -71,8 +71,10 @@ def get_dashboard_stats():
         # Total borrowers (users with loans)
         borrowers = User.query.join(Loan).distinct().count()
         
-        # Cash disbursed (total loan amounts)
-        cash_disbursed = db.session.query(func.sum(Loan.principal_amount)).scalar() or 0
+        # Cash disbursed (only approved/active loans that were actually disbursed)
+        cash_disbursed = db.session.query(func.sum(Loan.principal_amount)).filter(
+            Loan.status.in_([LoanStatus.APPROVED, LoanStatus.ACTIVE, LoanStatus.COMPLETED])
+        ).scalar() or 0
         
         # Cash received (total payments)
         cash_received = db.session.query(func.sum(Payment.amount)).scalar() or 0
@@ -88,8 +90,10 @@ def get_dashboard_stats():
             db.session.query(Loan.user_id).distinct()
         )).count()
         
-        # Total loans count
-        total_loans = Loan.query.count()
+        # Active loans count (only approved and active loans)
+        total_loans = Loan.query.filter(
+            Loan.status.in_([LoanStatus.APPROVED, LoanStatus.ACTIVE])
+        ).count()
         
         return jsonify({
             'active_users': active_users,
@@ -799,261 +803,21 @@ def get_user_savings_transactions(user_id):
     except Exception as e:
         return jsonify({'message': 'Failed to get user transactions', 'error': str(e)}), 500
 
-# Reports Routes
-@admin_bp.route('/reports/stats', methods=['GET'])
-@jwt_required()
-def get_reports_stats():
-    """Get overall financial statistics"""
-    try:
-        current_admin_id = get_jwt_identity()
-        admin = Admin.query.get(current_admin_id)
-        
-        if not admin or not admin.is_active:
-            return jsonify({'message': 'Admin not found or inactive'}), 404
-        
-        # Calculate total savings
-        total_savings = db.session.query(func.sum(Saving.balance)).scalar() or 0
-        
-        # Calculate total active loans
-        total_loans = db.session.query(func.sum(Loan.remaining_balance)).filter(
-            Loan.status.in_(['APPROVED', 'ACTIVE'])
-        ).scalar() or 0
-        
-        # Calculate total capital shares
-        total_capital_share = db.session.query(func.sum(User.capital_share)).scalar() or 0
-        
-        # Count total users
-        total_users = User.query.count()
-        
-        # Count active loans
-        active_loans = Loan.query.filter(Loan.status.in_(['APPROVED', 'ACTIVE'])).count()
-        
-        # Calculate total income (interest from loans + savings interest)
-        total_income = total_savings + total_loans + total_capital_share
-        
-        return jsonify({
-            'total_savings': float(total_savings),
-            'total_loans': float(total_loans),
-            'total_capital_share': float(total_capital_share),
-            'total_users': total_users,
-            'active_loans': active_loans,
-            'total_income': float(total_income)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to get statistics', 'error': str(e)}), 500
+# Reports Routes - MOVED TO routes/reports.py
+# @admin_bp.route('/reports/stats', methods=['GET'])
+# @jwt_required()
+# def get_reports_stats():
+#     (old code commented out - now using routes/reports.py)
 
-@admin_bp.route('/reports/activities', methods=['GET'])
-@jwt_required()
-def get_reports_activities():
-    """Get customer activities for reports"""
-    try:
-        current_admin_id = get_jwt_identity()
-        admin = Admin.query.get(current_admin_id)
-        
-        if not admin or not admin.is_active:
-            return jsonify({'message': 'Admin not found or inactive'}), 404
-        
-        period = request.args.get('period', '7days')
-        
-        # Calculate date range
-        if period == '7days':
-            start_date = datetime.utcnow() - timedelta(days=7)
-        elif period == '30days':
-            start_date = datetime.utcnow() - timedelta(days=30)
-        elif period == '3months':
-            start_date = datetime.utcnow() - timedelta(days=90)
-        elif period == '1year':
-            start_date = datetime.utcnow() - timedelta(days=365)
-        else:
-            start_date = datetime.utcnow() - timedelta(days=7)
-        
-        activities = []
-        
-        # Get recent transactions
-        transactions = Transaction.query.filter(
-            Transaction.created_at >= start_date
-        ).order_by(desc(Transaction.created_at)).limit(50).all()
-        
-        for transaction in transactions:
-            user = User.query.get(transaction.user_id)
-            if user:
-                activities.append({
-                    'type': 'savings' if transaction.transaction_type.value == 'SAVINGS' else transaction.transaction_type.value.lower(),
-                    'description': f"{user.first_name} {user.last_name} - {transaction.description}",
-                    'amount': transaction.amount,
-                    'created_at': transaction.created_at.isoformat()
-                })
-        
-        # Get recent loan applications
-        loans = Loan.query.filter(
-            Loan.created_at >= start_date
-        ).order_by(desc(Loan.created_at)).limit(30).all()
-        
-        for loan in loans:
-            user = User.query.get(loan.user_id)
-            if user:
-                activities.append({
-                    'type': 'loan',
-                    'description': f"{user.first_name} {user.last_name} applied for {loan.loan_type.value} loan",
-                    'amount': loan.principal_amount,
-                    'created_at': loan.created_at.isoformat()
-                })
-        
-        # Get recent payments
-        payments = Payment.query.filter(
-            Payment.payment_date >= start_date
-        ).order_by(desc(Payment.payment_date)).limit(30).all()
-        
-        for payment in payments:
-            user = User.query.get(payment.user_id)
-            if user:
-                activities.append({
-                    'type': 'payment',
-                    'description': f"{user.first_name} {user.last_name} made a payment",
-                    'amount': payment.amount,
-                    'created_at': payment.payment_date.isoformat()
-                })
-        
-        # Sort activities by date (most recent first)
-        activities.sort(key=lambda x: x['created_at'], reverse=True)
-        
-        return jsonify({
-            'activities': activities[:100]  # Limit to 100 most recent
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to get activities', 'error': str(e)}), 500
+# @admin_bp.route('/reports/activities', methods=['GET'])
+# @jwt_required()
+# def get_reports_activities():
+#     (old code commented out - now using routes/reports.py)
 
-@admin_bp.route('/reports/charts', methods=['GET'])
-@jwt_required()
-def get_reports_charts():
-    """Get chart data for reports"""
-    try:
-        current_admin_id = get_jwt_identity()
-        admin = Admin.query.get(current_admin_id)
-        
-        if not admin or not admin.is_active:
-            return jsonify({'message': 'Admin not found or inactive'}), 404
-        
-        period = request.args.get('period', '7days')
-        
-        # Calculate date range
-        if period == '7days':
-            start_date = datetime.utcnow() - timedelta(days=7)
-            date_format = '%Y-%m-%d'
-        elif period == '30days':
-            start_date = datetime.utcnow() - timedelta(days=30)
-            date_format = '%Y-%m-%d'
-        elif period == '3months':
-            start_date = datetime.utcnow() - timedelta(days=90)
-            date_format = '%Y-%m'
-        elif period == '1year':
-            start_date = datetime.utcnow() - timedelta(days=365)
-            date_format = '%Y-%m'
-        else:
-            start_date = datetime.utcnow() - timedelta(days=7)
-            date_format = '%Y-%m-%d'
-        
-        # Daily activities chart
-        daily_activities = db.session.query(
-            func.date(Transaction.created_at).label('date'),
-            func.count(Transaction.id).label('count')
-        ).filter(
-            Transaction.created_at >= start_date
-        ).group_by(
-            func.date(Transaction.created_at)
-        ).order_by('date').all()
-        
-        activity_labels = []
-        activity_data = []
-        
-        for activity in daily_activities:
-            activity_labels.append(activity.date.strftime('%m/%d'))
-            activity_data.append(activity.count)
-        
-        # Income sources (pie chart)
-        total_savings = db.session.query(func.sum(Saving.balance)).scalar() or 0
-        total_loans = db.session.query(func.sum(Loan.remaining_balance)).filter(
-            Loan.status.in_(['APPROVED', 'ACTIVE'])
-        ).scalar() or 0
-        total_capital_share = db.session.query(func.sum(User.capital_share)).scalar() or 0
-        total_interest = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.transaction_type == 'PENALTY'
-        ).scalar() or 0
-        
-        income_sources = {
-            'labels': ['Savings', 'Loans', 'Capital Share', 'Interest/Penalties'],
-            'data': [float(total_savings), float(total_loans), float(total_capital_share), float(total_interest)]
-        }
-        
-        # Monthly trends
-        monthly_savings = db.session.query(
-            func.strftime('%Y-%m', Saving.created_at).label('month'),
-            func.sum(Saving.amount).label('total')
-        ).filter(
-            Saving.created_at >= start_date
-        ).group_by(
-            func.strftime('%Y-%m', Saving.created_at)
-        ).order_by('month').all()
-        
-        monthly_loans = db.session.query(
-            func.strftime('%Y-%m', Loan.created_at).label('month'),
-            func.sum(Loan.principal_amount).label('total')
-        ).filter(
-            Loan.created_at >= start_date,
-            Loan.status.in_(['APPROVED', 'ACTIVE'])
-        ).group_by(
-            func.strftime('%Y-%m', Loan.created_at)
-        ).order_by('month').all()
-        
-        # Create comprehensive month list
-        all_months = set()
-        for saving in monthly_savings:
-            all_months.add(saving.month)
-        for loan in monthly_loans:
-            all_months.add(loan.month)
-        
-        sorted_months = sorted(list(all_months))
-        
-        savings_data = []
-        loans_data = []
-        month_labels = []
-        
-        for month in sorted_months:
-            month_labels.append(datetime.strptime(month, '%Y-%m').strftime('%b %Y'))
-            
-            # Find savings for this month
-            savings_amount = 0
-            for saving in monthly_savings:
-                if saving.month == month:
-                    savings_amount = float(saving.total)
-                    break
-            savings_data.append(savings_amount)
-            
-            # Find loans for this month
-            loans_amount = 0
-            for loan in monthly_loans:
-                if loan.month == month:
-                    loans_amount = float(loan.total)
-                    break
-            loans_data.append(loans_amount)
-        
-        return jsonify({
-            'daily_activities': {
-                'labels': activity_labels,
-                'data': activity_data
-            },
-            'income_sources': income_sources,
-            'monthly_trends': {
-                'labels': month_labels,
-                'savings': savings_data,
-                'loans': loans_data
-            }
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to get chart data', 'error': str(e)}), 500
+# @admin_bp.route('/reports/charts', methods=['GET'])
+# @jwt_required()
+# def get_reports_charts():
+#     (old code commented out - now using routes/reports.py)
 
 # Settings endpoints
 @admin_bp.route('/settings/profile', methods=['PUT'])

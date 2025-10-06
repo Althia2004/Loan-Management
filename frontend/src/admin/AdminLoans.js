@@ -3,10 +3,9 @@ import styled from 'styled-components';
 import { useAdminAuth } from '../contexts/AdminAuthContext';
 
 const LoansContainer = styled.div`
-  margin-left: 250px; /* Account for sidebar */
-  padding: 20px;
-  background: #f8f9fa;
-  min-height: 100vh;
+  padding: 0;
+  background: transparent;
+  min-height: auto;
 `;
 
 const Header = styled.div`
