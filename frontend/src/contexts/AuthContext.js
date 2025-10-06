@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       if (token) {
         try {
-          const response = await axios.get('/api/auth/profile');
+          const response = await axios.get('http://localhost:5000/api/auth/profile');
           setUser(response.data.user);
         } catch (error) {
           // Token is invalid, remove it
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await axios.post('http://localhost:5000/api/auth/login', { email, password });
       const { access_token, user } = response.data;
       
       localStorage.setItem('token', access_token);
@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await axios.post('http://localhost:5000/api/auth/register', userData);
       const { access_token, user } = response.data;
       
       localStorage.setItem('token', access_token);
@@ -86,13 +86,24 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const getAuthHeaders = () => {
+    if (token) {
+      return {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+    }
+    return {};
+  };
+
   const value = {
     user,
     token,
     loading,
     login,
     register,
-    logout
+    logout,
+    getAuthHeaders
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

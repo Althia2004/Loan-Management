@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -215,7 +215,7 @@ const ClearButton = styled(Button)`
 `;
 
 const LoanApplication = () => {
-  const { user } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     principal_amount: '',
@@ -225,6 +225,32 @@ const LoanApplication = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loanEligibility, setLoanEligibility] = useState(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(true);
+
+  // Check loan eligibility on component mount
+  useEffect(() => {
+    const checkEligibility = async () => {
+      if (!user) return;
+      
+      try {
+        setCheckingEligibility(true);
+        const headers = getAuthHeaders();
+        const response = await axios.get('http://localhost:5000/api/loans/eligibility', { headers });
+        setLoanEligibility(response.data);
+      } catch (error) {
+        console.error('Error checking eligibility:', error);
+        setLoanEligibility({
+          eligible: false,
+          message: 'Failed to check loan eligibility'
+        });
+      } finally {
+        setCheckingEligibility(false);
+      }
+    };
+
+    checkEligibility();
+  }, [user, getAuthHeaders]);
 
   const handleChange = (e) => {
     setFormData({
@@ -239,7 +265,8 @@ const LoanApplication = () => {
     setLoading(true);
 
     try {
-      await axios.post('/api/loans/apply', formData);
+      const headers = getAuthHeaders();
+      await axios.post('http://localhost:5000/api/loans/apply', formData, { headers });
       navigate('/loans');
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to submit loan application');
@@ -288,8 +315,35 @@ const LoanApplication = () => {
         </AlertBox>
       )}
 
+      {checkingEligibility && (
+        <AlertBox type="warning">
+          🔄 Checking loan eligibility...
+        </AlertBox>
+      )}
+
+      {!checkingEligibility && loanEligibility && !loanEligibility.eligible && user?.loan_eligibility && (
+        <AlertBox type="warning">
+          ⚠️ {loanEligibility.message}
+          {loanEligibility.payment_percentage !== undefined && (
+            <div style={{ marginTop: '10px', fontSize: '14px' }}>
+              <strong>Current Payment Progress:</strong> {loanEligibility.payment_percentage}% paid
+              <br />
+              <strong>Remaining to 50%:</strong> {loanEligibility.remaining_to_50}%
+              <br />
+              <strong>Amount Remaining:</strong> ₱{loanEligibility.remaining_balance?.toLocaleString()}
+            </div>
+          )}
+        </AlertBox>
+      )}
+
+      {!checkingEligibility && loanEligibility && loanEligibility.eligible && user?.loan_eligibility && (
+        <AlertBox type="success">
+          ✅ {loanEligibility.message}
+        </AlertBox>
+      )}
+
       <FormCard>
-        {user?.loan_eligibility && (
+        {user?.loan_eligibility && loanEligibility?.eligible && (
           <StatusCard eligible={true}>
             <StatusIcon>✅</StatusIcon>
             <StatusText eligible={true}>
@@ -315,7 +369,7 @@ const LoanApplication = () => {
               value={formData.principal_amount}
               onChange={handleChange}
               required
-              disabled={!user?.loan_eligibility}
+              disabled={!user?.loan_eligibility || !loanEligibility?.eligible}
             />
           </FormGroup>
 
@@ -326,7 +380,7 @@ const LoanApplication = () => {
               value={formData.duration_months}
               onChange={handleChange}
               required
-              disabled={!user?.loan_eligibility}
+              disabled={!user?.loan_eligibility || !loanEligibility?.eligible}
             >
               <option value="">Select...</option>
               <option value="6">6 Months</option>
@@ -344,7 +398,7 @@ const LoanApplication = () => {
               value={formData.loan_type}
               onChange={handleChange}
               required
-              disabled={!user?.loan_eligibility}
+              disabled={!user?.loan_eligibility || !loanEligibility?.eligible}
             >
               <option value="personal">Personal Loan</option>
               <option value="business">Business Loan</option>
@@ -364,7 +418,7 @@ const LoanApplication = () => {
               value={formData.purpose}
               onChange={handleChange}
               required
-              disabled={!user?.loan_eligibility}
+              disabled={!user?.loan_eligibility || !loanEligibility?.eligible}
             />
           </FormGroup>
         </Form>
@@ -372,7 +426,7 @@ const LoanApplication = () => {
         <ButtonGroup>
           <SubmitButton 
             type="submit" 
-            disabled={!user?.loan_eligibility || loading}
+            disabled={!user?.loan_eligibility || !loanEligibility?.eligible || loading}
             onClick={handleSubmit}
           >
             {loading ? 'Submitting...' : 'Submit'}

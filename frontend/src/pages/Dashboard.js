@@ -133,14 +133,17 @@ const TableCell = styled.td`
 `;
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await axios.get('/api/users/dashboard');
+        const headers = getAuthHeaders();
+        const response = await axios.get('http://localhost:5000/api/users/dashboard', { headers });
+        console.log('Dashboard Data:', response.data);
+        console.log('Active Loans:', response.data.active_loans);
         setDashboardData(response.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -149,8 +152,10 @@ const Dashboard = () => {
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
@@ -199,13 +204,35 @@ const Dashboard = () => {
   const totalLoanAmount = dashboardData?.total_principal_amount || 0;
   const totalRemainingBalance = dashboardData?.total_remaining_balance || 0;
   const paidAmount = totalLoanAmount - totalRemainingBalance;
+  const activeLoans = dashboardData?.active_loans || [];
+
+  // Generate colors for active loans
+  const generateColors = (count) => {
+    const colors = [
+      '#667eea', // Purple
+      '#48bb78', // Green
+      '#ed8936', // Orange
+      '#4299e1', // Blue
+      '#f56565', // Red
+      '#38b2ac', // Teal
+      '#ed64a6', // Pink
+      '#ecc94b', // Yellow
+    ];
+    return colors.slice(0, count);
+  };
 
   const loanStatusData = {
-    labels: totalLoanAmount > 0 ? ['Paid Amount', 'Remaining Balance'] : ['No Active Loans'],
+    labels: activeLoans.length > 0 
+      ? activeLoans.map((loan, index) => `Loan ${index + 1} (${loan.loan_type || 'Regular'})`)
+      : ['No Active Loans'],
     datasets: [
       {
-        data: totalLoanAmount > 0 ? [paidAmount, totalRemainingBalance] : [1],
-        backgroundColor: totalLoanAmount > 0 ? ['#48bb78', '#f56565'] : ['#e2e8f0'],
+        data: activeLoans.length > 0 
+          ? activeLoans.map(loan => loan.remaining_balance)
+          : [1],
+        backgroundColor: activeLoans.length > 0 
+          ? generateColors(activeLoans.length)
+          : ['#e2e8f0'],
         borderWidth: 0,
       },
     ],
@@ -290,16 +317,22 @@ const Dashboard = () => {
                 plugins: { 
                   legend: { 
                     position: 'bottom',
-                    display: totalLoanAmount > 0
+                    display: activeLoans.length > 0
                   },
                   tooltip: {
-                    enabled: totalLoanAmount > 0,
+                    enabled: activeLoans.length > 0,
                     callbacks: {
                       label: function(context) {
-                        const label = context.label || '';
-                        const value = context.parsed;
-                        const percentage = ((value / totalLoanAmount) * 100).toFixed(1);
-                        return `${label}: ₱${value.toLocaleString()} (${percentage}%)`;
+                        const loan = activeLoans[context.dataIndex];
+                        if (!loan) return '';
+                        const percentage = ((loan.remaining_balance / totalRemainingBalance) * 100).toFixed(1);
+                        return [
+                          `${context.label}`,
+                          `Remaining: ₱${loan.remaining_balance.toLocaleString()}`,
+                          `Principal: ₱${loan.principal_amount.toLocaleString()}`,
+                          `Paid: ₱${(loan.principal_amount - loan.remaining_balance).toLocaleString()}`,
+                          `Progress: ${percentage}% of total debt`
+                        ];
                       }
                     }
                   }
@@ -309,16 +342,19 @@ const Dashboard = () => {
             />
           </ChartContainer>
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
-            {totalLoanAmount > 0 ? (
+            {activeLoans.length > 0 ? (
               <>
-                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f56565' }}>
-                  Remaining Balance: ₱{totalRemainingBalance.toLocaleString()}
+                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#667eea' }}>
+                  {activeLoans.length} Active Loan{activeLoans.length > 1 ? 's' : ''}
                 </div>
-                <div style={{ fontSize: '14px', color: '#48bb78', marginTop: '4px' }}>
-                  Paid Amount: ₱{paidAmount.toLocaleString()}
+                <div style={{ fontSize: '14px', color: '#f56565', marginTop: '4px' }}>
+                  Total Outstanding: ₱{totalRemainingBalance.toLocaleString()}
                 </div>
                 <div style={{ fontSize: '14px', color: '#718096', marginTop: '4px' }}>
-                  Total Loan: ₱{totalLoanAmount.toLocaleString()}
+                  Total Borrowed: ₱{totalLoanAmount.toLocaleString()}
+                </div>
+                <div style={{ fontSize: '14px', color: '#48bb78', marginTop: '4px' }}>
+                  Total Paid: ₱{paidAmount.toLocaleString()} ({((paidAmount / totalLoanAmount) * 100).toFixed(1)}%)
                 </div>
               </>
             ) : (
@@ -428,38 +464,109 @@ const Dashboard = () => {
       )}
 
       <Card>
-        <h3>Recent Transactions</h3>
-        <TransactionTable>
-          <thead>
-            <tr>
-              <TableHeader>Date</TableHeader>
-              <TableHeader>Transaction ID</TableHeader>
-              <TableHeader>Type</TableHeader>
-              <TableHeader>Amount</TableHeader>
-              <TableHeader>Balance</TableHeader>
-            </tr>
-          </thead>
-          <tbody>
-            {dashboardData?.recent_transactions?.map((transaction, index) => (
-              <tr key={transaction.id}>
-                <TableCell>{new Date(transaction.created_at).toLocaleDateString()}</TableCell>
-                <TableCell>{transaction.transaction_id}</TableCell>
-                <TableCell>
-                  <StatusBadge eligible={transaction.transaction_type === 'savings'}>
-                    {transaction.transaction_type}
-                  </StatusBadge>
-                </TableCell>
-                <TableCell>₱{transaction.amount.toLocaleString()}</TableCell>
-                <TableCell>-</TableCell>
-              </tr>
-            ))}
-          </tbody>
-        </TransactionTable>
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <Link to="/transactions" style={{ color: '#667eea', textDecoration: 'none' }}>
-            See All →
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h3 style={{ margin: 0 }}>Recent Transactions</h3>
+          <Link 
+            to="/transactions" 
+            style={{ 
+              color: '#667eea', 
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              padding: '8px 16px',
+              border: '1px solid #667eea',
+              borderRadius: '6px',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#667eea';
+              e.target.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+              e.target.style.color = '#667eea';
+            }}
+          >
+            View All Transactions →
           </Link>
         </div>
+        
+        {dashboardData?.recent_transactions && dashboardData.recent_transactions.length > 0 ? (
+          <>
+            <TransactionTable>
+              <thead>
+                <tr>
+                  <TableHeader>Date</TableHeader>
+                  <TableHeader>Type</TableHeader>
+                  <TableHeader>Description</TableHeader>
+                  <TableHeader>Amount</TableHeader>
+                  <TableHeader>Status</TableHeader>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboardData.recent_transactions.slice(0, 5).map((transaction, index) => (
+                  <tr key={transaction.id || index}>
+                    <TableCell>{new Date(transaction.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <StatusBadge eligible={transaction.transaction_type === 'deposit' || transaction.transaction_type === 'savings'}>
+                        {transaction.transaction_type?.replace('_', ' ').toUpperCase()}
+                      </StatusBadge>
+                    </TableCell>
+                    <TableCell style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {transaction.description || transaction.transaction_id || 'Transaction'}
+                    </TableCell>
+                    <TableCell style={{ fontWeight: 'bold' }}>
+                      ₱{transaction.amount?.toLocaleString() || '0'}
+                    </TableCell>
+                    <TableCell>
+                      <span style={{ 
+                        color: transaction.status === 'completed' ? '#48bb78' : '#f56565',
+                        fontSize: '12px',
+                        fontWeight: '500'
+                      }}>
+                        {transaction.status || 'COMPLETED'}
+                      </span>
+                    </TableCell>
+                  </tr>
+                ))}
+              </tbody>
+            </TransactionTable>
+            <div style={{ textAlign: 'center', marginTop: '16px', padding: '12px', backgroundColor: '#f7fafc', borderRadius: '8px' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: '#718096' }}>
+                Showing {Math.min(5, dashboardData.recent_transactions.length)} of {dashboardData.recent_transactions.length} recent transactions
+              </p>
+            </div>
+          </>
+        ) : (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '40px 20px', 
+            color: '#718096',
+            backgroundColor: '#f7fafc',
+            borderRadius: '8px'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+            <h4 style={{ margin: '0 0 8px 0' }}>No transactions yet</h4>
+            <p style={{ margin: 0, fontSize: '14px' }}>
+              Start by making a savings deposit or loan payment to see your transaction history here.
+            </p>
+            <Link 
+              to="/savings" 
+              style={{ 
+                display: 'inline-block',
+                marginTop: '16px',
+                color: '#667eea', 
+                textDecoration: 'none',
+                padding: '8px 16px',
+                border: '1px solid #667eea',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            >
+              Make a Deposit
+            </Link>
+          </div>
+        )}
       </Card>
     </DashboardContainer>
   );

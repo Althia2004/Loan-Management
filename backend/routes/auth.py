@@ -50,13 +50,17 @@ def register():
 def login():
     try:
         data = request.get_json()
+        print(f"[USER LOGIN] Received data: {data}")
         
         if not data.get('email') or not data.get('password'):
+            print("[USER LOGIN] Missing email or password")
             return jsonify({'message': 'Email and password are required'}), 400
         
         user = User.query.filter_by(email=data['email']).first()
+        print(f"[USER LOGIN] Found user: {user.email if user else 'None'}")
         
         if user and check_password_hash(user.password_hash, data['password']):
+            print(f"[USER LOGIN] Password check successful for user {user.email}")
             # Cast identity to string to satisfy PyJWT's requirement that 'sub' must be a string
             access_token = create_access_token(identity=str(user.id))
             return jsonify({
@@ -65,6 +69,7 @@ def login():
                 'user': user.to_dict()
             }), 200
         else:
+            print(f"[USER LOGIN] Password check failed for email: {data['email']}")
             return jsonify({'message': 'Invalid email or password'}), 401
             
     except Exception as e:

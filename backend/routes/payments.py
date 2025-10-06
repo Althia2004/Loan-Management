@@ -38,13 +38,15 @@ def make_payment():
             return jsonify({'message': 'Loan not found'}), 404
         
         amount = float(data['amount'])
+        payment_method = data.get('payment_method', 'manual')  # manual, gcash, card
         
         # Create payment record
         payment = Payment(
             user_id=user_id,
             loan_id=loan.id,
             amount=amount,
-            status='completed'
+            status='completed',
+            payment_method=payment_method
         )
         
         # Update loan balance

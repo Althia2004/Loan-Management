@@ -85,17 +85,43 @@ const Button = styled.button`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  background-color: #48bb78;
+  background-color: ${props => props.variant === 'danger' ? '#f56565' : '#48bb78'};
   color: white;
   
   &:hover {
-    background-color: #38a169;
+    background-color: ${props => props.variant === 'danger' ? '#e53e3e' : '#38a169'};
   }
   
   &:disabled {
     background-color: #a0aec0;
     cursor: not-allowed;
   }
+`;
+
+const WithdrawForm = styled.div`
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 20px;
+  margin: 20px 0;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+const ActionCard = styled.div`
+  flex: 1;
+  background: ${props => props.variant === 'deposit' ? '#f8fff9' : '#fff5f5'};
+  border: 1px solid ${props => props.variant === 'deposit' ? '#c6f6d5' : '#fed7d7'};
+  border-radius: 8px;
+  padding: 20px;
 `;
 
 const SavingsHistory = styled.div`
@@ -136,22 +162,25 @@ const NoSavingsMessage = styled.div`
 `;
 
 const AlertBox = styled.div`
-  background-color: #d4edda;
-  color: #155724;
+  background-color: ${props => props.type === 'error' ? '#fed7d7' : '#d4edda'};
+  color: ${props => props.type === 'error' ? '#742a2a' : '#155724'};
   padding: 16px;
   border-radius: 8px;
   margin-bottom: 20px;
-  border: 1px solid #c3e6cb;
+  border: 1px solid ${props => props.type === 'error' ? '#fc8181' : '#c3e6cb'};
 `;
 
 const Savings = () => {
-  const { user } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [savings, setSavings] = useState([]);
   const [totalSavings, setTotalSavings] = useState(0);
   const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
   const [loading, setLoading] = useState(true);
   const [depositing, setDepositing] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success'); // 'success' or 'error'
 
   useEffect(() => {
     fetchSavings();
@@ -159,7 +188,8 @@ const Savings = () => {
 
   const fetchSavings = async () => {
     try {
-      const response = await axios.get('/api/savings');
+      const headers = getAuthHeaders();
+      const response = await axios.get('http://localhost:5000/api/savings/', { headers });
       setSavings(response.data.savings);
       setTotalSavings(response.data.total_savings);
     } catch (error) {
@@ -173,6 +203,7 @@ const Savings = () => {
     e.preventDefault();
     if (!depositAmount || parseFloat(depositAmount) <= 0) {
       setMessage('Please enter a valid amount');
+      setMessageType('error');
       return;
     }
 
@@ -180,17 +211,55 @@ const Savings = () => {
     setMessage('');
 
     try {
-      await axios.post('/api/savings/deposit', {
+      const headers = getAuthHeaders();
+      await axios.post('http://localhost:5000/api/savings/deposit', {
         amount: parseFloat(depositAmount)
-      });
+      }, { headers });
       
       setMessage('Savings deposited successfully!');
+      setMessageType('success');
       setDepositAmount('');
       fetchSavings(); // Refresh savings data
     } catch (error) {
       setMessage(error.response?.data?.message || 'Failed to deposit savings');
+      setMessageType('error');
     } finally {
       setDepositing(false);
+    }
+  };
+
+  const handleWithdraw = async (e) => {
+    e.preventDefault();
+    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+      setMessage('Please enter a valid amount');
+      setMessageType('error');
+      return;
+    }
+
+    if (parseFloat(withdrawAmount) > totalSavings) {
+      setMessage(`Insufficient funds. Available balance: ₱${totalSavings.toLocaleString()}`);
+      setMessageType('error');
+      return;
+    }
+
+    setWithdrawing(true);
+    setMessage('');
+
+    try {
+      const headers = getAuthHeaders();
+      await axios.post('http://localhost:5000/api/savings/withdraw', {
+        amount: parseFloat(withdrawAmount)
+      }, { headers });
+      
+      setMessage('Withdrawal successful!');
+      setMessageType('success');
+      setWithdrawAmount('');
+      fetchSavings(); // Refresh savings data
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Failed to process withdrawal');
+      setMessageType('error');
+    } finally {
+      setWithdrawing(false);
     }
   };
 
@@ -209,47 +278,76 @@ const Savings = () => {
         <SavingsAmount>₱{totalSavings.toLocaleString()}</SavingsAmount>
         
         {message && (
-          <AlertBox>
+          <AlertBox type={messageType}>
             {message}
           </AlertBox>
         )}
 
-        <DepositForm>
-          <FormTitle>
-            💰 Make a Deposit
-          </FormTitle>
-          <form onSubmit={handleDeposit}>
-            <FormGroup>
-              <Input
-                type="number"
-                placeholder="Enter amount to deposit"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                min="1"
-                step="0.01"
-                required
-              />
-              <Button type="submit" disabled={depositing}>
-                {depositing ? 'Processing...' : 'Deposit'}
-              </Button>
-            </FormGroup>
-          </form>
-        </DepositForm>
+        <ActionButtons>
+          <ActionCard variant="deposit">
+            <FormTitle>
+              💰 Make a Deposit
+            </FormTitle>
+            <form onSubmit={handleDeposit}>
+              <FormGroup>
+                <Input
+                  type="number"
+                  placeholder="Enter amount to deposit"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  min="1"
+                  step="0.01"
+                  required
+                />
+                <Button type="submit" disabled={depositing}>
+                  {depositing ? 'Processing...' : 'Deposit'}
+                </Button>
+              </FormGroup>
+            </form>
+          </ActionCard>
+
+          <ActionCard variant="withdraw">
+            <FormTitle style={{ color: '#742a2a' }}>
+              💸 Withdraw Savings
+            </FormTitle>
+            <form onSubmit={handleWithdraw}>
+              <FormGroup>
+                <Input
+                  type="number"
+                  placeholder="Enter amount to withdraw"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  min="1"
+                  step="0.01"
+                  max={totalSavings}
+                  required
+                />
+                <Button type="submit" variant="danger" disabled={withdrawing || totalSavings === 0}>
+                  {withdrawing ? 'Processing...' : 'Withdraw'}
+                </Button>
+              </FormGroup>
+            </form>
+            <div style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
+              Available balance: ₱{totalSavings.toLocaleString()}
+            </div>
+          </ActionCard>
+        </ActionButtons>
       </SavingsCard>
 
       <SavingsHistory>
-        <h3 style={{ marginBottom: '20px', color: '#2d3748' }}>Savings History</h3>
+        <h3 style={{ marginBottom: '20px', color: '#2d3748' }}>Transaction History</h3>
         {savings.length === 0 ? (
           <NoSavingsMessage>
-            No savings records found. Start saving today!
+            No transactions found. Start saving today!
           </NoSavingsMessage>
         ) : (
           <Table>
             <thead>
               <tr>
                 <TableHeader>Date</TableHeader>
-                <TableHeader>Amount Deposited</TableHeader>
-                <TableHeader>Current Balance</TableHeader>
+                <TableHeader>Type</TableHeader>
+                <TableHeader>Amount</TableHeader>
+                <TableHeader>Balance After</TableHeader>
                 <TableHeader>Interest Rate</TableHeader>
               </tr>
             </thead>
@@ -259,7 +357,24 @@ const Savings = () => {
                   <TableCell>
                     {new Date(saving.created_at).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>₱{saving.amount.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <span style={{ 
+                      background: saving.amount >= 0 ? '#c6f6d5' : '#fed7d7',
+                      color: saving.amount >= 0 ? '#22543d' : '#742a2a',
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      {saving.amount >= 0 ? '💰 DEPOSIT' : '💸 WITHDRAWAL'}
+                    </span>
+                  </TableCell>
+                  <TableCell style={{ 
+                    color: saving.amount >= 0 ? '#48bb78' : '#f56565',
+                    fontWeight: 'bold'
+                  }}>
+                    {saving.amount >= 0 ? '+' : ''}₱{Math.abs(saving.amount).toLocaleString()}
+                  </TableCell>
                   <TableCell>₱{saving.balance.toLocaleString()}</TableCell>
                   <TableCell>{saving.interest_rate}%</TableCell>
                 </tr>

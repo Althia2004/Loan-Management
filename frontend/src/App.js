@@ -10,6 +10,7 @@ import Transactions from './pages/Transactions';
 import Savings from './pages/Savings';
 import Accounts from './pages/Accounts';
 import LoanApplication from './pages/LoanApplication';
+import Payments from './pages/Payments';
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="loans" element={<Loans />} />
               <Route path="loan-application" element={<LoanApplication />} />
+              <Route path="payments" element={<Payments />} />
               <Route path="transactions" element={<Transactions />} />
               <Route path="savings" element={<Savings />} />
               <Route path="accounts" element={<Accounts />} />

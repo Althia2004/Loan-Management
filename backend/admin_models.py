@@ -27,9 +27,8 @@ class Admin(db.Model):
     
     def check_password(self, password):
         """Check if provided password matches the hashed password"""
-        from flask_bcrypt import Bcrypt
-        bcrypt = Bcrypt()
-        return bcrypt.check_password_hash(self.password_hash, password)
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
         
     def to_dict(self):
         return {

@@ -70,8 +70,44 @@ def get_dashboard_data():
         from sqlalchemy import func, extract
         from datetime import datetime, timedelta
         
-        active_loans = Loan.query.filter_by(user_id=user.id, status=LoanStatus.ACTIVE).all()
-        recent_transactions = Transaction.query.filter_by(user_id=user.id).order_by(Transaction.created_at.desc()).limit(5).all()
+        # Get both approved and active loans (approved loans that haven't been marked as active yet)
+        active_loans = Loan.query.filter(
+            Loan.user_id == user.id,
+            Loan.status.in_([LoanStatus.APPROVED, LoanStatus.ACTIVE])
+        ).all()
+        
+        # Get recent transactions from all sources (matching the transactions page logic)
+        recent_transactions_list = []
+        
+        # 1. Regular transactions
+        transactions = Transaction.query.filter_by(user_id=user.id).order_by(Transaction.created_at.desc()).limit(10).all()
+        for transaction in transactions:
+            recent_transactions_list.append({
+                'id': transaction.id,
+                'transaction_id': transaction.transaction_id,
+                'transaction_type': transaction.transaction_type.value,
+                'amount': transaction.amount,
+                'description': transaction.description or f"{transaction.transaction_type.value.title()} Transaction",
+                'status': 'completed',
+                'created_at': transaction.created_at.isoformat()
+            })
+        
+        # 2. Recent payments (if any)
+        payments = Payment.query.filter_by(user_id=user.id).order_by(Payment.payment_date.desc()).limit(5).all()
+        for payment in payments:
+            recent_transactions_list.append({
+                'id': f"payment_{payment.id}",
+                'transaction_id': payment.payment_id,
+                'transaction_type': 'loan_payment',
+                'amount': payment.amount,
+                'description': f"Loan Payment",
+                'status': payment.status,
+                'created_at': payment.payment_date.isoformat()
+            })
+        
+        # Sort by date and get the 5 most recent
+        recent_transactions_list.sort(key=lambda x: x['created_at'], reverse=True)
+        recent_transactions = recent_transactions_list[:5]
         
         # Get payment history for the last 12 months
         end_date = datetime.utcnow()
@@ -147,7 +183,7 @@ def get_dashboard_data():
             'total_monthly_payment': total_monthly_payment,
             'total_penalties': total_penalties,
             'overdue_loans': overdue_loans,
-            'recent_transactions': [transaction.to_dict() for transaction in recent_transactions],
+            'recent_transactions': recent_transactions,
             'payment_history': payment_chart_data
         }
         

@@ -9,6 +9,7 @@ class LoanStatus(Enum):
     REJECTED = "rejected"
     ACTIVE = "active"
     COMPLETED = "completed"
+    DEFAULTED = "defaulted"
 
 class LoanType(Enum):
     PERSONAL = "personal"
@@ -22,6 +23,7 @@ class LoanType(Enum):
 class TransactionType(Enum):
     LOAN = "loan"
     SAVINGS = "savings"
+    WITHDRAWAL = "withdrawal"
     PENALTY = "penalty"
     PAYMENT = "payment"
 
@@ -38,6 +40,7 @@ class User(db.Model):
     capital_share = db.Column(db.Float, default=0.0)
     member_status = db.Column(db.String(20), default='REGULAR MEMBER')
     loan_eligibility = db.Column(db.Boolean, default=False)
+    created_by_admin = db.Column(db.Integer, db.ForeignKey('admins.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -58,6 +61,17 @@ class User(db.Model):
         self.updated_at = datetime.utcnow()
     
     def to_dict(self):
+        from admin_models import Admin
+        created_by = None
+        if self.created_by_admin:
+            admin = Admin.query.get(self.created_by_admin)
+            if admin:
+                created_by = {
+                    'id': admin.id,
+                    'username': admin.username,
+                    'email': admin.email
+                }
+        
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -68,6 +82,7 @@ class User(db.Model):
             'capital_share': self.capital_share,
             'member_status': self.member_status,
             'loan_eligibility': self.loan_eligibility,
+            'created_by': created_by,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
@@ -210,6 +225,7 @@ class Payment(db.Model):
     amount = db.Column(db.Float, nullable=False)
     payment_date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default='completed')
+    payment_method = db.Column(db.String(50), default='manual')  # manual, gcash, card
     
     def to_dict(self):
         return {
@@ -219,7 +235,8 @@ class Payment(db.Model):
             'loan_id': self.loan_id,
             'amount': self.amount,
             'payment_date': self.payment_date.isoformat(),
-            'status': self.status
+            'status': self.status,
+            'payment_method': self.payment_method
         }
 
 class Penalty(db.Model):

@@ -135,24 +135,53 @@ const NoLoansMessage = styled.div`
 `;
 
 const Loans = () => {
-  const { user } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  console.log('[USER LOANS] Component loaded');
+  console.log('[USER LOANS] User:', user);
+  console.log('[USER LOANS] Initial loans state:', loans);
+  console.log('[USER LOANS] GetAuthHeaders function available:', typeof getAuthHeaders);
+  console.log('[USER LOANS] Token from localStorage:', localStorage.getItem('token'));
+  console.log('[USER LOANS] Current auth headers:', getAuthHeaders());
 
   useEffect(() => {
     const fetchLoans = async () => {
       try {
-        const response = await axios.get('/api/loans');
-        setLoans(response.data.loans);
+        console.log('[USER LOANS] Fetching loans...');
+        
+        const headers = getAuthHeaders();
+        console.log('[USER LOANS] Auth headers:', headers);
+        
+        if (!headers || !headers.Authorization) {
+          console.error('[USER LOANS] No auth headers available!');
+          setLoading(false);
+          return;
+        }
+        
+        const response = await axios.get('http://localhost:5000/api/loans/', { headers });
+        console.log('[USER LOANS] Response status:', response.status);
+        console.log('[USER LOANS] Response data:', response.data);
+        console.log('[USER LOANS] Number of loans:', response.data.loans?.length || 0);
+        
+        setLoans(response.data.loans || []);
+        setLoading(false);
       } catch (error) {
-        console.error('Error fetching loans:', error);
-      } finally {
+        console.error('[USER LOANS] Error fetching loans:', error);
+        console.error('[USER LOANS] Error response:', error.response?.data);
         setLoading(false);
       }
     };
 
-    fetchLoans();
-  }, []);
+    if (user) {
+      console.log('[USER LOANS] User is logged in, calling fetchLoans()');
+      fetchLoans();
+    } else {
+      console.log('[USER LOANS] No user found, not fetching loans');
+      setLoading(false);
+    }
+  }, [user]); // Only depend on user, not getAuthHeaders
 
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
@@ -176,13 +205,14 @@ const Loans = () => {
     return <LoansContainer><div>Loading loans...</div></LoansContainer>;
   }
 
+  // Separate approved and rejected loans
+  const approvedLoans = loans.filter(loan => loan.status.toLowerCase() === 'approved');
+  const rejectedLoans = loans.filter(loan => loan.status.toLowerCase() === 'rejected');
+
   return (
     <LoansContainer>
       <PageHeader>
         <PageTitle>Loans</PageTitle>
-        {user?.loan_eligibility && (
-          <ApplyButton to="/loan-application">Apply for Loan</ApplyButton>
-        )}
       </PageHeader>
 
       <UserCard>
@@ -204,10 +234,10 @@ const Loans = () => {
       </UserCard>
 
       <LoansTable>
-        <TableTitle>Your Loans</TableTitle>
-        {loans.length === 0 ? (
+        <TableTitle>Your Active Loans</TableTitle>
+        {approvedLoans.length === 0 ? (
           <NoLoansMessage>
-            No loans found. {user?.loan_eligibility ? 'Apply for your first loan!' : 'Increase your capital share to ₱20,000 to be eligible for loans.'}
+            No active loans. {user?.loan_eligibility ? 'Apply for your first loan!' : 'Increase your capital share to ₱20,000 to be eligible for loans.'}
           </NoLoansMessage>
         ) : (
           <Table>
@@ -222,7 +252,7 @@ const Loans = () => {
               </tr>
             </thead>
             <tbody>
-              {loans.map((loan, index) => (
+              {approvedLoans.map((loan, index) => (
                 <tr key={loan.id}>
                   <TableCell>{String(index + 1).padStart(2, '0')}.</TableCell>
                   <TableCell>₱{loan.principal_amount.toLocaleString()}</TableCell>
@@ -236,18 +266,59 @@ const Loans = () => {
             <tfoot>
               <tr style={{ background: '#f7fafc', fontWeight: 'bold' }}>
                 <TableCell>Total</TableCell>
-                <TableCell>₱{loans.reduce((sum, loan) => sum + loan.principal_amount, 0).toLocaleString()}</TableCell>
-                <TableCell>₱{loans.reduce((sum, loan) => sum + loan.remaining_balance, 0).toLocaleString()}</TableCell>
+                <TableCell>₱{approvedLoans.reduce((sum, loan) => sum + loan.principal_amount, 0).toLocaleString()}</TableCell>
+                <TableCell>₱{approvedLoans.reduce((sum, loan) => sum + loan.remaining_balance, 0).toLocaleString()}</TableCell>
                 <TableCell>-</TableCell>
                 <TableCell>-</TableCell>
                 <TableCell style={{ color: '#e53e3e' }}>
-                  ₱{loans.reduce((sum, loan) => sum + loan.monthly_payment, 0).toLocaleString()} / month
+                  ₱{approvedLoans.reduce((sum, loan) => sum + loan.monthly_payment, 0).toLocaleString()} / month
                 </TableCell>
               </tr>
             </tfoot>
           </Table>
         )}
       </LoansTable>
+
+      {rejectedLoans.length > 0 && (
+        <LoansTable style={{ marginTop: '30px' }}>
+          <TableTitle>Rejected Loan Applications</TableTitle>
+          <Table>
+            <thead>
+              <tr>
+                <TableHeader>Sl No</TableHeader>
+                <TableHeader>Principal Amount</TableHeader>
+                <TableHeader>Duration</TableHeader>
+                <TableHeader>Purpose</TableHeader>
+                <TableHeader>Application Date</TableHeader>
+                <TableHeader>Status</TableHeader>
+              </tr>
+            </thead>
+            <tbody>
+              {rejectedLoans.map((loan, index) => (
+                <tr key={loan.id} style={{ background: '#fff5f5' }}>
+                  <TableCell>{String(index + 1).padStart(2, '0')}.</TableCell>
+                  <TableCell>₱{loan.principal_amount.toLocaleString()}</TableCell>
+                  <TableCell>{loan.duration_months} Months</TableCell>
+                  <TableCell>{loan.purpose || 'N/A'}</TableCell>
+                  <TableCell>{new Date(loan.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <span style={{ 
+                      background: '#fed7d7', 
+                      color: '#742a2a', 
+                      padding: '4px 12px', 
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      REJECTED
+                    </span>
+                  </TableCell>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </LoansTable>
+      )}
     </LoansContainer>
   );
 };

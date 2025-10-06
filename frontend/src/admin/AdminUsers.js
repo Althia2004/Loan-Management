@@ -313,6 +313,209 @@ const LoadingSpinner = styled.div`
   color: #666;
 `;
 
+// Delete Modal Components
+const DeleteModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const DeleteModalContent = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  width: 500px;
+  max-width: 90vw;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+`;
+
+const DeleteModalHeader = styled.div`
+  padding: 24px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  position: relative;
+  
+  .close-button {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    
+    &:hover {
+      color: #333;
+      background: #f5f5f5;
+    }
+  }
+`;
+
+const DeleteModalTitle = styled.h2`
+  margin: 0 0 16px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+`;
+
+const UserNameDisplay = styled.div`
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 16px;
+`;
+
+const ReasonSelect = styled.select`
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+`;
+
+const DeleteModalActions = styled.div`
+  display: flex;
+  border-top: 1px solid #eee;
+`;
+
+const DeleteModalButton = styled.button`
+  flex: 1;
+  padding: 16px;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &.confirm {
+    background: #dc3545;
+    color: white;
+    
+    &:hover {
+      background: #c82333;
+    }
+  }
+  
+  &.cancel {
+    background: white;
+    color: #666;
+    border-right: 1px solid #eee;
+    
+    &:hover {
+      background: #f8f9fa;
+    }
+  }
+`;
+
+const DeleteModalBody = styled.div`
+  padding: 20px;
+  text-align: center;
+`;
+
+const DeleteWarningIcon = styled.div`
+  font-size: 48px;
+  color: #dc3545;
+  margin-bottom: 16px;
+`;
+
+const DeleteWarningText = styled.p`
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 16px;
+  line-height: 1.5;
+  
+  &.strong {
+    font-weight: 600;
+    color: #dc3545;
+  }
+`;
+
+const DeleteReasonSelect = styled.select`
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  background: white;
+  color: #333;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  
+  &:focus {
+    outline: none;
+    border-color: #dc3545;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+  }
+  
+  option {
+    padding: 8px;
+  }
+`;
+
+const DeleteModalFooter = styled.div`
+  display: flex;
+  border-top: 1px solid #eee;
+`;
+
+const DeleteCancelButton = styled.button`
+  flex: 1;
+  padding: 16px;
+  border: none;
+  background: white;
+  color: #666;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  border-right: 1px solid #eee;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background: #f8f9fa;
+  }
+`;
+
+const DeleteConfirmButton = styled.button`
+  flex: 1;
+  padding: 16px;
+  border: none;
+  background: #dc3545;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background: #c82333;
+  }
+  
+  &:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+`;
+
 const AdminUsers = () => {
   const { getAuthHeaders } = useAdminAuth();
   const [users, setUsers] = useState([]);
@@ -323,6 +526,9 @@ const AdminUsers = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('');
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -366,6 +572,7 @@ const AdminUsers = () => {
   };
 
   const handleAddUser = () => {
+    console.log('Add User button clicked');
     setModalMode('add');
     setFormData({
       first_name: '',
@@ -377,6 +584,7 @@ const AdminUsers = () => {
     });
     setSelectedUser(null);
     setShowModal(true);
+    console.log('Modal should be open, showModal set to:', true);
   };
 
   const handleEditUser = (user) => {
@@ -393,26 +601,68 @@ const AdminUsers = () => {
     setShowModal(true);
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+  const handleDeleteUser = (userId) => {
+    const user = users.find(u => u.id === userId);
+    setUserToDelete(user);
+    setDeleteReason('');
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+    
+    const hasActiveLoans = userToDelete.active_loans > 0;
+    
+    // If user has active loans and no reason is selected, show error
+    if (hasActiveLoans && !deleteReason) {
+      alert('Please select a reason for deletion when the user has active loans.');
+      return;
+    }
+    
+    const reason = hasActiveLoans ? deleteReason : 'no_active_loans';
     
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json'
+      };
+      
+      const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
         method: 'DELETE',
-        headers
+        headers,
+        body: JSON.stringify({
+          reason: reason,
+          confirmed_with_active_loans: hasActiveLoans
+        })
       });
       
+      const result = await response.json();
+      
+      console.log('Delete response status:', response.status);
+      console.log('Delete response ok:', response.ok);
+      console.log('Delete result:', result);
+      
       if (response.ok) {
+        // Close modal and reset state
+        setShowDeleteModal(false);
+        setUserToDelete(null);
+        setDeleteReason('');
         fetchUsers(); // Refresh the list
+        alert(`User "${userToDelete.first_name} ${userToDelete.last_name}" has been deleted successfully.`);
+      } else {
+        console.error('Delete failed:', result);
+        alert(result.message || 'Failed to delete user');
       }
     } catch (error) {
-      console.error('Failed to delete user:', error);
+      console.error('Network error while deleting user:', error);
+      alert(`Network error: ${error.message || 'Failed to delete user'}`);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submitted, modalMode:', modalMode);
+    console.log('Form data:', formData);
     
     try {
       const headers = {
@@ -423,18 +673,32 @@ const AdminUsers = () => {
       const url = modalMode === 'add' ? '/api/admin/users' : `/api/admin/users/${selectedUser.id}`;
       const method = modalMode === 'add' ? 'POST' : 'PUT';
       
+      console.log('Making request to:', url, 'with method:', method);
+      console.log('Headers:', headers);
+      
       const response = await fetch(url, {
         method,
         headers,
         body: JSON.stringify(formData)
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
+      
       if (response.ok) {
+        console.log('Success! Closing modal and refreshing list');
         setShowModal(false);
         fetchUsers(); // Refresh the list
+      } else {
+        console.error('Request failed:', responseData);
+        alert(`Failed to ${modalMode} user: ${responseData.message}`);
       }
     } catch (error) {
       console.error(`Failed to ${modalMode} user:`, error);
+      alert(`Error: ${error.message}`);
     }
   };
 
@@ -681,6 +945,56 @@ const AdminUsers = () => {
             </Form>
           </ModalContent>
         </Modal>
+      )}
+      
+      {showDeleteModal && userToDelete && (
+        <DeleteModal>
+          <DeleteModalContent>
+            <DeleteModalHeader>
+              <DeleteModalTitle>Delete User</DeleteModalTitle>
+              <button 
+                className="close-button" 
+                onClick={() => setShowDeleteModal(false)}
+              >
+                ×
+              </button>
+            </DeleteModalHeader>
+            
+            <DeleteModalBody>
+              <DeleteWarningIcon>⚠️</DeleteWarningIcon>
+              <DeleteWarningText>
+                Are you sure you want to delete <strong>{userToDelete.first_name} {userToDelete.last_name}</strong>?
+              </DeleteWarningText>
+              
+              {userToDelete.active_loans > 0 && (
+                <>
+                  <DeleteWarningText style={{ color: '#dc3545', fontWeight: 'bold' }}>
+                    This user has {userToDelete.active_loans} active loan(s). 
+                    Please specify a reason for deletion:
+                  </DeleteWarningText>
+                  
+                  <DeleteReasonSelect 
+                    value={deleteReason} 
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                  >
+                    <option value="">Select a reason...</option>
+                    <option value="expired">Expired</option>
+                    <option value="personal">Personal</option>
+                  </DeleteReasonSelect>
+                </>
+              )}
+            </DeleteModalBody>
+            
+            <DeleteModalFooter>
+              <DeleteCancelButton onClick={() => setShowDeleteModal(false)}>
+                Cancel
+              </DeleteCancelButton>
+              <DeleteConfirmButton onClick={confirmDelete}>
+                Delete User
+              </DeleteConfirmButton>
+            </DeleteModalFooter>
+          </DeleteModalContent>
+        </DeleteModal>
       )}
     </UsersContainer>
   );

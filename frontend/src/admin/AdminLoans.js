@@ -399,17 +399,36 @@ const AdminLoans = () => {
 
   const handleLoanAction = async (loanId, action) => {
     try {
-      const headers = getAuthHeaders();
+      console.log(`[ADMIN LOANS] Attempting to ${action} loan ${loanId}`);
+      const headers = {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json'
+      };
+      
+      console.log(`[ADMIN LOANS] Making request to: /api/admin/loans/${loanId}/${action}`);
+      console.log(`[ADMIN LOANS] Headers:`, headers);
+      
       const response = await fetch(`/api/admin/loans/${loanId}/${action}`, {
         method: 'POST',
         headers
       });
       
+      console.log(`[ADMIN LOANS] Response status:`, response.status);
+      
+      const responseData = await response.json();
+      console.log(`[ADMIN LOANS] Response data:`, responseData);
+      
       if (response.ok) {
+        console.log(`[ADMIN LOANS] ${action} successful, refreshing loans list`);
         fetchLoans(); // Refresh the list
+        alert(`Loan ${action}d successfully!`);
+      } else {
+        console.error(`[ADMIN LOANS] ${action} failed:`, responseData);
+        alert(`Failed to ${action} loan: ${responseData.message}`);
       }
     } catch (error) {
-      console.error(`Failed to ${action} loan:`, error);
+      console.error(`[ADMIN LOANS] Failed to ${action} loan:`, error);
+      alert(`Error: ${error.message}`);
     }
   };
 

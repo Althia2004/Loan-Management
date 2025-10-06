@@ -30,7 +30,13 @@ def create_app():
     migrate.init_app(app, db)
     jwt.init_app(app)
     bcrypt.init_app(app)
-    CORS(app, origins=["http://localhost:3000"])
+    
+    # Enhanced CORS configuration
+    CORS(app, 
+         origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization"],
+         supports_credentials=True)
 
     # Import models AFTER db is initialized
     from models import User, Loan, Transaction, Saving, Payment

@@ -3,7 +3,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from admin_models import Admin, AdminActivity
-from models import User, Loan, Transaction, Saving, Payment
+from models import User, Loan, Transaction, Saving, Payment, LoanStatus
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 
@@ -13,8 +13,10 @@ admin_bp = Blueprint('admin', __name__)
 def admin_login():
     try:
         data = request.get_json()
+        print(f"[ADMIN LOGIN] Received data: {data}")
         
         if not data.get('username') or not data.get('password'):
+            print("[ADMIN LOGIN] Missing username or password")
             return jsonify({'message': 'Username and password are required'}), 400
         
         # Allow login with either username or email
@@ -24,7 +26,11 @@ def admin_login():
             (Admin.email == username_or_email)
         ).first()
         
+        print(f"[ADMIN LOGIN] Found admin: {admin.username if admin else 'None'}")
+        print(f"[ADMIN LOGIN] Admin active: {admin.is_active if admin else 'N/A'}")
+        
         if admin and admin.check_password(data['password']) and admin.is_active:
+            print(f"[ADMIN LOGIN] Login successful for admin: {admin.username}")
             # Update last login
             admin.last_login = datetime.utcnow()
             
@@ -45,6 +51,7 @@ def admin_login():
                 'admin': admin.to_dict()
             }), 200
         else:
+            print(f"[ADMIN LOGIN] Login failed for username: {username_or_email}")
             return jsonify({'message': 'Invalid credentials'}), 401
             
     except Exception as e:
@@ -200,11 +207,16 @@ def get_all_loans():
 @jwt_required()
 def approve_loan(loan_id):
     try:
+        print(f"[ADMIN APPROVE] Approving loan {loan_id}")
         admin_id = get_jwt_identity()
-        loan = Loan.query.get_or_404(loan_id)
+        print(f"[ADMIN APPROVE] Admin ID: {admin_id}")
         
-        if loan.status != 'PENDING':
-            return jsonify({'message': 'Loan is not pending approval'}), 400
+        loan = Loan.query.get_or_404(loan_id)
+        print(f"[ADMIN APPROVE] Found loan {loan.loan_id}, current status: {loan.status}")
+        
+        if loan.status != LoanStatus.PENDING:
+            print(f"[ADMIN APPROVE] Loan is not pending: {loan.status}")
+            return jsonify({'message': f'Loan is not pending approval (current status: {loan.status.value})'}), 400
         
         loan.status = 'APPROVED'
         loan.approved_at = datetime.utcnow()
@@ -246,11 +258,16 @@ def approve_loan(loan_id):
 @jwt_required()
 def reject_loan(loan_id):
     try:
+        print(f"[ADMIN REJECT] Rejecting loan {loan_id}")
         admin_id = get_jwt_identity()
-        loan = Loan.query.get_or_404(loan_id)
+        print(f"[ADMIN REJECT] Admin ID: {admin_id}")
         
-        if loan.status != 'PENDING':
-            return jsonify({'message': 'Loan is not pending approval'}), 400
+        loan = Loan.query.get_or_404(loan_id)
+        print(f"[ADMIN REJECT] Found loan {loan.loan_id}, current status: {loan.status}")
+        
+        if loan.status != LoanStatus.PENDING:
+            print(f"[ADMIN REJECT] Loan is not pending: {loan.status}")
+            return jsonify({'message': f'Loan is not pending approval (current status: {loan.status.value})'}), 400
         
         loan.status = 'REJECTED'
         
@@ -292,7 +309,9 @@ def get_all_users():
             user_data = user.to_dict()
             # Add loan count and total borrowed
             user_loans = Loan.query.filter_by(user_id=user.id).all()
+            active_loans = Loan.query.filter_by(user_id=user.id, status='ACTIVE').all()
             user_data['loan_count'] = len(user_loans)
+            user_data['active_loans'] = len(active_loans)
             user_data['total_borrowed'] = sum(loan.principal_amount for loan in user_loans)
             users_data.append(user_data)
         
@@ -354,13 +373,16 @@ def create_user():
         # Create new user
         from werkzeug.security import generate_password_hash
         
+        admin_id = get_jwt_identity()
+        
         user = User(
             first_name=data['first_name'],
             last_name=data['last_name'],
             email=data['email'],
             contact_number=data['contact_number'],
             password_hash=generate_password_hash(data['password']),
-            capital_share=float(data.get('capital_share', 0))
+            capital_share=float(data.get('capital_share', 0)),
+            created_by_admin=int(admin_id)
         )
         
         # Set membership status and loan eligibility based on capital share
@@ -450,41 +472,112 @@ def update_user(user_id):
 @jwt_required()
 def delete_user(user_id):
     try:
+        # Temporarily disable foreign key constraints for this operation
+        from sqlalchemy import text
+        db.session.execute(text('PRAGMA foreign_keys=OFF'))
+        print(f"=== DELETE USER REQUEST RECEIVED ===")
+        print(f"User ID: {user_id}")
+    except Exception as pragma_error:
+        print(f"Error disabling foreign keys: {pragma_error}")
+    
+    try:
         user = User.query.get(user_id)
         if not user:
             return jsonify({'message': 'User not found'}), 404
         
-        # Check if user has active loans
-        active_loans = Loan.query.filter_by(user_id=user_id, status='ACTIVE').count()
-        if active_loans > 0:
-            return jsonify({'message': 'Cannot delete user with active loans'}), 400
+        # Get request data for deletion reason
+        data = request.get_json() or {}
+        deletion_reason = data.get('reason', 'no_reason_provided')
+        confirmed_with_loans = data.get('confirmed_with_active_loans', False)
         
         user_name = f"{user.first_name} {user.last_name}"
         
-        # Delete related records first
-        Transaction.query.filter_by(user_id=user_id).delete()
-        Saving.query.filter_by(user_id=user_id).delete()
-        Payment.query.filter_by(user_id=user_id).delete()
-        Loan.query.filter_by(user_id=user_id).delete()
+        # Check if user has any loans (active or completed)
+        from models import LoanStatus
+        all_user_loans = Loan.query.filter_by(user_id=user_id).all()
+        active_loans = [loan for loan in all_user_loans if loan.status == LoanStatus.ACTIVE]
         
-        # Delete user
-        db.session.delete(user)
+        # Handle loans - require confirmation if user has any loans
+        loans_action_taken = []
+        if all_user_loans:
+            if not confirmed_with_loans and active_loans:
+                return jsonify({
+                    'message': f'User has {len(active_loans)} active loan(s). Please confirm deletion with reason.',
+                    'active_loans_count': len(active_loans),
+                    'requires_confirmation': True
+                }), 400
+            
+            # Delete all loans since we can't preserve them with NULL user_id
+            for loan in all_user_loans:
+                db.session.delete(loan)
+                loans_action_taken.append(f"Loan #{loan.id} deleted ({loan.status.value})")
         
-        # Log activity
+        # Delete related records in proper order to avoid foreign key constraints
+        try:
+            # Delete penalties first (they reference loans)
+            from models import Penalty
+            penalties = Penalty.query.join(Loan).filter(Loan.user_id == user_id).all()
+            for penalty in penalties:
+                db.session.delete(penalty)
+            
+            # Delete payments individually to avoid bulk delete FK issues
+            user_payments = Payment.query.filter_by(user_id=user_id).all()
+            for payment in user_payments:
+                db.session.delete(payment)
+            
+            # Delete transactions
+            Transaction.query.filter_by(user_id=user_id).delete()
+            
+            # Delete savings
+            Saving.query.filter_by(user_id=user_id).delete()
+            
+            # We keep loan records for audit but update their status (already done above)
+            
+            # Finally delete user
+            db.session.delete(user)
+            
+        except Exception as delete_error:
+            print(f"Error during deletion process: {str(delete_error)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
+            raise delete_error
+        
+        # Log activity with detailed information
         admin_id = get_jwt_identity()
+        activity_description = f'Deleted user: {user_name}. Reason: {deletion_reason}'
+        if active_loans:
+            activity_description += f'. Had {len(active_loans)} active loans. Actions: {"; ".join(loans_action_taken)}'
+        
         activity = AdminActivity(
             admin_id=int(admin_id),
-            action='DELETE_USER',
-            description=f'Deleted user: {user_name}',
+            action='DELETE_USER_WITH_REASON',
+            description=activity_description,
             ip_address=request.remote_addr
         )
         db.session.add(activity)
         db.session.commit()
         
-        return jsonify({'message': 'User deleted successfully'}), 200
+        # Re-enable foreign key constraints
+        db.session.execute(text('PRAGMA foreign_keys=ON'))
+        
+        response_message = f'User {user_name} deleted successfully'
+        if active_loans:
+            response_message += f'. {len(active_loans)} active loan(s) were handled.'
+        
+        return jsonify({
+            'message': response_message,
+            'deletion_reason': deletion_reason,
+            'loans_handled': len(active_loans),
+            'actions_taken': loans_action_taken
+        }), 200
         
     except Exception as e:
         db.session.rollback()
+        # Re-enable foreign key constraints even on error
+        try:
+            db.session.execute(text('PRAGMA foreign_keys=ON'))
+        except:
+            pass
         return jsonify({'message': 'Failed to delete user', 'error': str(e)}), 500
 
 @admin_bp.route('/loans/overdue', methods=['GET'])

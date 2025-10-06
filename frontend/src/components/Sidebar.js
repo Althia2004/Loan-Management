@@ -1,26 +1,31 @@
-import React from 'react';
+﻿import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import styled from 'styled-components';
+import { useAuth } from '../contexts/AuthContext';
 
 const SidebarContainer = styled.div`
+  width: 250px;
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  height: 100vh;
   position: fixed;
   left: 0;
   top: 0;
-  width: 250px;
-  height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 20px;
-  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 `;
 
 const Logo = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 40px;
+  padding: 30px 20px;
   font-size: 24px;
   font-weight: bold;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 `;
 
 const LogoIcon = styled.div`
@@ -28,84 +33,80 @@ const LogoIcon = styled.div`
   height: 40px;
   background: white;
   border-radius: 8px;
-  margin-right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   color: #667eea;
+  font-weight: bold;
 `;
 
-const NavList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-`;
-
-const NavItem = styled.li`
-  margin-bottom: 8px;
+const Nav = styled.nav`
+  flex: 1;
+  padding: 20px 0;
+  overflow-y: auto;
 `;
 
 const StyledNavLink = styled(NavLink)`
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  color: rgba(255, 255, 255, 0.8);
+  padding: 15px 25px;
+  color: white;
   text-decoration: none;
-  border-radius: 8px;
   transition: all 0.3s ease;
-  
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-  }
-  
-  &.active {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
-  }
-`;
+  font-size: 16px;
+  gap: 12px;
 
-const NavIcon = styled.span`
-  margin-right: 12px;
-  font-size: 20px;
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    padding-left: 30px;
+  }
+
+  &.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-left: 4px solid white;
+    padding-left: 21px;
+  }
+
+  span {
+    font-size: 20px;
+  }
 `;
 
 const LogoutButton = styled.button`
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  background-color: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  padding: 15px 25px;
   color: white;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  padding: 12px;
-  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  gap: 12px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  
+  width: 100%;
+  text-align: left;
+  margin-top: auto;
+
   &:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.2);
+    padding-left: 30px;
+  }
+
+  span {
+    font-size: 20px;
   }
 `;
 
 const Sidebar = () => {
-  const { logout } = useAuth();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
-
-  const navItems = [
-    { path: '/dashboard', icon: '🏠', label: 'My Dashboard' },
-    { path: '/loan-application', icon: '�', label: 'Apply for Loan' },
-    { path: '/loans', icon: '💳', label: 'My Loans' },
-    { path: '/savings', icon: '💰', label: 'My Savings' },
-    { path: '/transactions', icon: '📊', label: 'My Transactions' },
-    { path: '/accounts', icon: '👤', label: 'My Profile' },
-  ];
 
   return (
     <SidebarContainer>
@@ -113,19 +114,38 @@ const Sidebar = () => {
         <LogoIcon>$</LogoIcon>
         Money Glitch
       </Logo>
-      
-      <NavList>
-        {navItems.map((item) => (
-          <NavItem key={item.path}>
-            <StyledNavLink to={item.path}>
-              <NavIcon>{item.icon}</NavIcon>
-              {item.label}
-            </StyledNavLink>
-          </NavItem>
-        ))}
-      </NavList>
-      
+      <Nav>
+        <StyledNavLink to="/dashboard">
+          <span></span>
+          My Dashboard
+        </StyledNavLink>
+        <StyledNavLink to="/loan-application">
+          <span></span>
+          Apply for Loan
+        </StyledNavLink>
+        <StyledNavLink to="/loans">
+          <span></span>
+          My Loans
+        </StyledNavLink>
+        <StyledNavLink to="/payments">
+          <span></span>
+          Pay Loan
+        </StyledNavLink>
+        <StyledNavLink to="/savings">
+          <span></span>
+          My Savings
+        </StyledNavLink>
+        <StyledNavLink to="/transactions">
+          <span></span>
+          My Transactions
+        </StyledNavLink>
+        <StyledNavLink to="/accounts">
+          <span></span>
+          My Profile
+        </StyledNavLink>
+      </Nav>
       <LogoutButton onClick={handleLogout}>
+        <span></span>
         Logout
       </LogoutButton>
     </SidebarContainer>
@@ -133,3 +153,5 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+
+
