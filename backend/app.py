@@ -16,8 +16,14 @@ def create_app():
 
     # Config
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///loan_management.db')
+    
+    # Database configuration - support both SQLite (dev) and PostgreSQL (production)
+    database_url = os.getenv('DATABASE_URL', 'sqlite:///loan_management.db')
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'jwt-secret-string')
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
     
@@ -32,8 +38,16 @@ def create_app():
     bcrypt.init_app(app)
     
     # Enhanced CORS configuration
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        os.getenv('FRONTEND_URL', ''),  # Will be set in production
+    ]
+    # Remove empty strings
+    allowed_origins = [origin for origin in allowed_origins if origin]
+    
     CORS(app, 
-         origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+         origins=allowed_origins,
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          allow_headers=["Content-Type", "Authorization"],
          supports_credentials=True)
@@ -70,4 +84,9 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)
+
+# For Gunicorn
+app = create_app()
