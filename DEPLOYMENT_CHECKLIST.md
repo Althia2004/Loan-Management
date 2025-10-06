@@ -88,15 +88,22 @@ Check the deployment logs. You should see:
 - [ ] Click "Add New" → "Project"
 - [ ] Import: `Loan-Management` repository
 
-### 3. Configure Project
+### 3. Configure Project ⚠️ CRITICAL STEP
 ```
 Project Name: moneyglitch
-Framework: Create React App
-Root Directory: frontend
-Build Command: npm run build
-Output Directory: build
-Install Command: npm install
+Framework Preset: Create React App
+Root Directory: frontend  ← ⚠️ MUST SET THIS! Click folder icon to select
+Build Command: npm run build (leave default)
+Output Directory: build (leave default)
+Install Command: npm install (leave default)
+Node.js Version: 18.x (default)
 ```
+
+**⚠️ IMPORTANT:** 
+- You MUST set "Root Directory" to `frontend`
+- Click the folder icon next to Root Directory field
+- Select the `frontend` folder
+- If you skip this, you'll get: "Could not read package.json" error
 
 ### 4. Environment Variables
 ```env
@@ -195,6 +202,21 @@ FRONTEND_URL=https://moneyglitch.com
 
 ### Common Issues
 
+**Vercel Error: "Could not read package.json" or "ENOENT"**
+```
+npm error path /vercel/path0/package.json
+npm error enoent Could not read package.json
+```
+**Cause:** Root Directory not set to `frontend`
+
+**Fix:**
+1. Go to Vercel Dashboard → Your Project
+2. Click "Settings" → "General"
+3. Scroll to "Build & Development Settings"
+4. Root Directory: Type `frontend` and click the folder icon to select it
+5. Click "Save"
+6. Go to "Deployments" → Latest deployment → "..." menu → "Redeploy"
+
 **Backend won't start:**
 - Check logs in Render dashboard
 - Verify all environment variables are set
@@ -212,8 +234,8 @@ FRONTEND_URL=https://moneyglitch.com
 
 **Database errors:**
 - Ensure PostgreSQL is created and linked
-- Run migrations in Render Shell
-- Check DATABASE_URL environment variable
+- Check DATABASE_URL environment variable in Render
+- Look for initialization messages in logs
 
 ---
 
